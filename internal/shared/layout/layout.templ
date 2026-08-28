@@ -1,0 +1,71 @@
+// Package layout holds the page shells shared across features: the <head>
+// boilerplate (htmx, the CSRF meta tag its helper reads) and the two
+// <body> wrappers — Base for simple centered pages, Dashboard (dashboard.templ)
+// for the sidebar+navbar shell.
+package layout
+
+import "github.com/AkifhanIlgaz/tini/internal/shared/components/themetoggle"
+
+templ head(title string, csrfToken string) {
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<meta name="csrf-token" content={ csrfToken }/>
+		<title>{ title }</title>
+		<!-- No defer/async: must set [data-theme]/[data-sidebar] before first paint to avoid a flash of the wrong state. -->
+		<script src="/static/js/theme-toggle.js"></script>
+		<script src="/static/js/sidebar.js"></script>
+		<link rel="preconnect" href="https://fonts.googleapis.com"/>
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+		<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+		<link rel="stylesheet" href="/static/css/app.css"/>
+		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		<script src="/static/js/htmx-helpers.js"></script>
+		<script src="/static/js/alert_dialog.js"></script>
+		<script src="/static/js/toast.js"></script>
+		<!-- Vendored alongside internal/shared/components — same blanket-load
+		     approach as alert_dialog.js/toast.js above: a template repo can't
+		     know in advance which of these a downstream project will render. -->
+		<script src="/static/js/accordion.js"></script>
+		<script src="/static/js/autocomplete.js"></script>
+		<script src="/static/js/checkbox.js"></script>
+		<script src="/static/js/disclosure.js"></script>
+		<script src="/static/js/dropdown.js"></script>
+		<script src="/static/js/input_otp.js"></script>
+		<script src="/static/js/list_box.js"></script>
+		<script src="/static/js/popover.js"></script>
+		<script src="/static/js/scroll_shadow.js"></script>
+		<script src="/static/js/search_field.js"></script>
+		<script src="/static/js/select.js"></script>
+		<script src="/static/js/switch.js"></script>
+		<script src="/static/js/tabs.js"></script>
+		<script src="/static/js/tag_group.js"></script>
+		<script src="/static/js/toggle_button.js"></script>
+		<script src="/static/js/toolbar.js"></script>
+		<script src="/static/js/tooltip.js"></script>
+	</head>
+}
+
+templ Base(title string, csrfToken string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		@head(title, csrfToken)
+		<body class="min-h-screen bg-background text-foreground">
+			<div class="absolute right-4 top-4 z-10">
+				@themetoggle.Toggle()
+			</div>
+			{ children... }
+			@ToastRegion()
+		</body>
+	</html>
+}
+
+// ToastRegion is HeroUI's toast region (@heroui/styles' toast.css, class
+// names/data-slots matched exactly — see static/js/toast.js) that
+// static/js/toast.js appends toasts into, shown by the server via
+// internal/shared/htmx.Toast (HX-Trigger). Mounted once per page shell
+// (both here and in Dashboard) since either can be the page a
+// toast-triggering request happens on.
+templ ToastRegion() {
+	<div id="toast-region" class="toast-region toast-region--bottom-end" data-slot="toast-region" role="region" aria-label="Bildirimler" tabindex="-1"></div>
+}

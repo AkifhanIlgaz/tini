@@ -1,0 +1,49 @@
+# Copy to config.yaml for local development: cp config.yaml.example config.yaml
+# config.yaml is gitignored — never commit real secrets in it.
+#
+# In production there is no config.yaml at all: every field below is set via
+# the matching environment variable instead (see internal/config/config.go).
+#   env                  -> APP_ENV
+#   log.level            -> LOG_LEVEL
+#   server.port          -> PORT
+#   server.base_url      -> BASE_URL
+#   mongo.uri            -> MONGO_URI
+#   mongo.db             -> MONGO_DB
+#   redis.url            -> REDIS_URL
+#   session.secret       -> SESSION_SECRET
+#   session.idle         -> SESSION_IDLE
+#   google.client_id     -> GOOGLE_CLIENT_ID
+#   google.client_secret -> GOOGLE_CLIENT_SECRET
+
+env: development
+
+# debug locally to see everything; info (or unset) in production.
+log:
+  level: debug
+
+server:
+  port: "3000"
+  base_url: http://localhost:3000
+
+# Local dev: docker compose up -d starts a matching mongo instance.
+mongo:
+  uri: mongodb://localhost:27017
+  db: project-template
+
+# Local dev: docker compose up -d starts a matching redis instance.
+# Sessions and CSRF state live here.
+redis:
+  url: redis://localhost:6379/0
+
+session:
+  # Generate with: openssl rand -base64 32
+  secret: ""
+  idle: 168h # 7 days
+  gothic_secret: ""
+
+# Google Cloud Console → APIs & Services → Credentials → OAuth client ID
+# Authorized redirect URI: ${server.base_url}/auth/google/callback
+google:
+  client_id: ""
+  client_secret: ""
+  callback_url: ""
