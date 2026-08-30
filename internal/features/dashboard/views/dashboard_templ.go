@@ -14,10 +14,8 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/shared/layout"
 )
 
-// Dashboard demonstrates internal/shared/layout.Dashboard end to end: a
-// protected page rendered inside the sidebar+navbar shell. Clone this
-// template's content away once real pages exist — dashboard_nav.go's
-// navItems/appName are the part worth keeping and extending.
+// Dashboard is the app's home page (Anasayfa) — general, at-a-glance
+// features live here.
 func Dashboard(u session.User, path string, csrfToken string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -94,7 +92,7 @@ func Dashboard(u session.User, path string, csrfToken string) templ.Component {
 						var templ_7745c5c3_Var6 string
 						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(u.Email)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/dashboard/views/dashboard.templ`, Line: 27, Col: 27}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/dashboard/views/dashboard.templ`, Line: 25, Col: 27}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 						if templ_7745c5c3_Err != nil {
@@ -122,7 +120,7 @@ func Dashboard(u session.User, path string, csrfToken string) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "Bu, kimliği doğrulanmış sidebar+navbar shell'ini gösteren örnek bir panel sayfasıdır.")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "Genel özellikler burada yer alacak.")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -147,14 +145,14 @@ func Dashboard(u session.User, path string, csrfToken string) templ.Component {
 			return nil
 		})
 		templ_7745c5c3_Err = layout.Dashboard(layout.DashboardProps{
-			Title:       "Panel",
+			Title:       "Anasayfa",
 			CSRFToken:   csrfToken,
 			Path:        path,
 			User:        u,
 			Crumbs:      dashboardCrumbs(),
-			AppName:     appName,
-			NavItems:    navItems,
-			FooterItems: footerItems,
+			AppName:     layout.AppName,
+			NavItems:    layout.NavItems,
+			FooterItems: layout.FooterItems,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

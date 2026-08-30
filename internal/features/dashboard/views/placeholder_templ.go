@@ -164,9 +164,9 @@ func Placeholder(u session.User, path string, csrfToken string, title string, pa
 			Path:        path,
 			User:        u,
 			Crumbs:      pageCrumbs,
-			AppName:     appName,
-			NavItems:    navItems,
-			FooterItems: footerItems,
+			AppName:     layout.AppName,
+			NavItems:    layout.NavItems,
+			FooterItems: layout.FooterItems,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
