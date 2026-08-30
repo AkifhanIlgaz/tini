@@ -14,7 +14,6 @@ const AppName = "tını"
 var NavItems = []sidebar.NavItem{
 	{Label: "Anasayfa", Href: "/dashboard", Icon: icons.House},
 	{Label: "Playlist", Href: "/playlist", Icon: icons.ListMusic},
-	{Label: "QR Kod", Href: "/qr-kod", Icon: icons.QrCode},
 	{Label: "Oylama", Href: "/oylama", Icon: icons.Vote},
 	{Label: "Mekan bilgileri", Href: "/venue", Icon: icons.Building2},
 	{Label: "Kullanıcılar", Href: "/users", Icon: icons.Users},
@@ -23,7 +22,6 @@ var NavItems = []sidebar.NavItem{
 var AdminNavItems = []sidebar.NavItem{
 	{Label: "Anasayfa", Href: "/dashboard", Icon: icons.House},
 	{Label: "Playlist", Href: "/playlist", Icon: icons.ListMusic},
-	{Label: "QR Kod", Href: "/qr-kod", Icon: icons.QrCode},
 	{Label: "Oylama", Href: "/oylama", Icon: icons.Vote},
 	{Label: "Mekan bilgileri", Href: "/venue", Icon: icons.Building2},
 }

@@ -1,6 +1,6 @@
 // Package dashboard is the app's home feature: the Anasayfa overview page,
-// plus placeholder pages for the sidebar links (Playlist, QR Kod, Oylama)
-// that don't have their own feature yet.
+// plus placeholder pages for the sidebar links (Playlist, Oylama) that
+// don't have their own feature yet.
 package dashboard
 
 import (
@@ -24,7 +24,6 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 
 	app.Get("/dashboard", guard, h.Dashboard)
 	app.Get("/playlist", guard, h.page("Playlist"))
-	app.Get("/qr-kod", guard, h.page("QR Kod"))
 	app.Get("/oylama", guard, h.page("Oylama"))
 }
 
