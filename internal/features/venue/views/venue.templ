@@ -1,0 +1,33 @@
+package views
+
+import (
+	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/card"
+	"github.com/AkifhanIlgaz/tini/internal/shared/layout"
+)
+
+// Info is a placeholder for the venue feature's own page — swap it for real
+// content once the venue repository/service exist (see venue_domain.go).
+templ Info(u session.User, path string, csrfToken string) {
+	@layout.Dashboard(layout.DashboardProps{
+		Title:       "Mekan bilgileri",
+		CSRFToken:   csrfToken,
+		Path:        path,
+		User:        u,
+		Crumbs:      []layout.Crumb{{Label: "Anasayfa", Href: "/dashboard"}, {Label: "Mekan bilgileri"}},
+		AppName:     layout.AppName,
+		NavItems:    layout.NavItems,
+		FooterItems: layout.FooterItems,
+	}) {
+		@card.Card(card.Props{}) {
+			@card.Header() {
+				@card.Title() {
+					Mekan bilgileri
+				}
+				@card.Description() {
+					Venue bilgileri burada yönetilecek.
+				}
+			}
+		}
+	}
+}
