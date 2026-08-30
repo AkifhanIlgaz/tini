@@ -216,3 +216,21 @@ repo'da ayrıca:
   boosted/plain request ayrımını ve `HX-Trigger` gibi header çakışmalarını
   merkezi olarak çözer — yeni bir HX-* header ihtiyacı çıkarsa buraya
   eklenir, handler'lara header yazımı serpiştirilmez.
+- **Servis katmanı metodları tek bir `req <Fiil><İsim>Request` parametresi
+  alır**: `func (s *Service) Foo(ctx context.Context, req FooRequest) (...)`
+  — birden fazla gevşek parametre (`venueID, email string` gibi) yerine her
+  zaman feature'ın kendi `<feature>_dto.go` dosyasında tanımlı bir DTO.
+  Session/URL'den gelip kullanıcıdan gelmeyen alanlar da (ör. `VenueID`) bu
+  DTO'nun içinde taşınır, sadece `form:"-"` tag'iyle işaretlenip bind'e
+  kapatılır — böylece her servis metodu aynı şekle sahip olur (bkz.
+  `internal/features/user/user_dto.go`, `user_service.go`).
+- **Bu proje htmx tabanlı olduğu için form input'ları `application/x-www-
+  form-urlencoded` olarak gelir** (JSON değil) — DTO alanlarına `json` değil
+  `form:"<ad>"` tag'i eklenir, Fiber'ın `c.Bind().Body(&req)`'i bunu kullanır.
+- **Validasyon her zaman DTO'nun kendi `Validate() error` metoduyla yapılır**
+  — `go-playground/validator` gibi harici bir validation kütüphanesi/`validate`
+  struct tag'i kullanılmaz (denendi, kaldırıldı: bir yandan struct tag'e
+  bağlı bir kütüphane kurup bir yandan da elle metod yazmak aynı işi iki kez
+  yapmak oluyor). `Validate()` **handler katmanında**, `c.Bind()`'den hemen
+  sonra, servis çağrılmadan önce çağrılır — servis metodları kendilerine
+  gelen `req`'in zaten valide edilmiş olduğunu varsayar.

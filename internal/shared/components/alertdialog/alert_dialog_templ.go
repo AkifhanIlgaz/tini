@@ -679,6 +679,10 @@ func AlertDialogIcon(p IconProps, tw ...string) templ.Component {
 		var templ_7745c5c3_Var30 = []any{utils.Cn(
 			"alert-dialog__icon",
 			"alert-dialog__icon--"+p.Status.String(),
+			// alert-dialog.css never spaces the icon from whatever follows
+			// it (AlertDialogHeader) — it's a plain sibling, not a child
+			// the header's own flex gap reaches — so the gap is added here.
+			"mb-3",
 			tw,
 		)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var30...)
@@ -747,6 +751,10 @@ func AlertDialogIconCustom(p IconProps, tw ...string) templ.Component {
 		var templ_7745c5c3_Var33 = []any{utils.Cn(
 			"alert-dialog__icon",
 			"alert-dialog__icon--"+p.Status.String(),
+			// alert-dialog.css never spaces the icon from whatever follows
+			// it (AlertDialogHeader) — it's a plain sibling, not a child
+			// the header's own flex gap reaches — so the gap is added here.
+			"mb-3",
 			tw,
 		)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var33...)

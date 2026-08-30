@@ -1,0 +1,86 @@
+package table
+
+import "github.com/AkifhanIlgaz/tini/internal/shared/utils"
+
+// Table wraps @heroui/styles' table.css classes around plain native table
+// elements — heroui-go doesn't have a real Table component yet (only the
+// CSS exists there, no React Aria/templ implementation to vendor), so this
+// is a simple, non-compound stand-in rather than a faithful HeroUI v3 port.
+//
+// table.css expects a specific wrapper structure, not just classes on
+// <table> itself: a grid "root" div, a scroll container div inside it, and
+// only then the real <table> — see table-root/table__scroll-container in
+// @heroui/styles/components/table.css.
+//
+//	@table.Table(table.Props{}) {
+//		@table.Header() {
+//			@table.Column() { Ad }
+//		}
+//		@table.Body() {
+//			@table.Row() {
+//				@table.Cell() { ... }
+//			}
+//		}
+//	}
+
+type Variant string
+
+const (
+	VariantPrimary   Variant = "primary"
+	VariantSecondary Variant = "secondary"
+)
+
+func (v Variant) String() string {
+	if v == "" {
+		return string(VariantPrimary)
+	}
+
+	return string(v)
+}
+
+type Props struct {
+	Variant Variant // default: primary
+	Attrs   templ.Attributes
+}
+
+templ Table(p Props, tw ...string) {
+	<div class={ templ.SafeClass(utils.Cn("table-root", "table-root--"+p.Variant.String(), tw)) } data-slot="table">
+		<div class="table__scroll-container">
+			<table class="table__content" data-slot="table-content" { p.Attrs... }>
+				{ children... }
+			</table>
+		</div>
+	</div>
+}
+
+templ Header(tw ...string) {
+	<thead class={ templ.SafeClass(utils.Cn("table__header", tw)) } data-slot="table-header">
+		<tr>
+			{ children... }
+		</tr>
+	</thead>
+}
+
+templ Column(tw ...string) {
+	<th class={ templ.SafeClass(utils.Cn("table__column", tw)) } data-slot="table-column" scope="col">
+		{ children... }
+	</th>
+}
+
+templ Body(tw ...string) {
+	<tbody class={ templ.SafeClass(utils.Cn("table__body", tw)) } data-slot="table-body">
+		{ children... }
+	</tbody>
+}
+
+templ Row(tw ...string) {
+	<tr class={ templ.SafeClass(utils.Cn("table__row", tw)) } data-slot="table-row">
+		{ children... }
+	</tr>
+}
+
+templ Cell(tw ...string) {
+	<td class={ templ.SafeClass(utils.Cn("table__cell", tw)) } data-slot="table-cell">
+		{ children... }
+	</td>
+}

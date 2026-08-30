@@ -2,4 +2,7 @@ package user
 
 import "errors"
 
-var ErrNotFound = errors.New("user: not found")
+var (
+	ErrUserNotFound      = errors.New("user: not found")
+	ErrUserAlreadyExists = errors.New("user: already exists")
+)
