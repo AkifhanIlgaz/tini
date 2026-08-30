@@ -37,9 +37,9 @@ redis:
 
 session:
   # Generate with: openssl rand -base64 32
-  secret: ""
+  secret: "session=secret"
   idle: 168h # 7 days
-  gothic_secret: ""
+  gothic_secret: "gothic=secret"
 
 # Google Cloud Console → APIs & Services → Credentials → OAuth client ID
 # Authorized redirect URI: ${server.base_url}/auth/google/callback
