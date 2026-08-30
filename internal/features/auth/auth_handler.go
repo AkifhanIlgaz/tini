@@ -5,10 +5,13 @@ import (
 	"net/http"
 
 	"github.com/AkifhanIlgaz/tini/internal/config"
+	"github.com/AkifhanIlgaz/tini/internal/features/auth/views"
 	"github.com/AkifhanIlgaz/tini/internal/features/user"
 	"github.com/AkifhanIlgaz/tini/internal/platform/csrf"
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
 	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
+	"github.com/AkifhanIlgaz/tini/internal/shared/middleware"
+	"github.com/a-h/templ"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gorilla/sessions"
@@ -44,15 +47,24 @@ func (h *AuthHandler) RegisterProviders(cfg config.Config) {
 
 	gothic.Store = store
 
-	goth.UseProviders(google.New(cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.CallbackURL))
+	// goth's Google provider defaults to the "email" scope alone when none
+	// are given — without "profile" too, Google's userinfo response never
+	// includes name/picture, leaving gothUser.Name/AvatarURL empty.
+	goth.UseProviders(google.New(cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.CallbackURL, "email", "profile"))
 }
 
 func (h *AuthHandler) RegisterRoutes(app *fiber.App) {
+	app.Get("/login", middleware.UnauthenticatedLayout(), h.LoginPage)
+
 	authRoute := app.Group("/auth")
 
 	authRoute.Get("/:provider", h.Login)
 	authRoute.Get("/:provider/callback", h.Callback)
 	authRoute.Post("/logout", h.Logout)
+}
+
+func (h *AuthHandler) LoginPage(c fiber.Ctx) error {
+	return render(c, views.Login(csrf.Token(c)))
 }
 
 // Login and Callback take the provider from Fiber's :provider route param
@@ -101,7 +113,7 @@ func (h *AuthHandler) Callback(c fiber.Ctx) error {
 		return fmt.Errorf("auth: upsert user: %w", err)
 	}
 
-	sessUser := session.User{ID: u.ID, Email: u.Email, Roles: u.Roles}
+	sessUser := session.User{ID: u.ID, VenueID: u.VenueID, Email: u.Email, Name: u.Name, Role: u.Role}
 	if err := session.Login(c, sessUser); err != nil {
 		return fmt.Errorf("auth: login: %w", err)
 	}
@@ -112,11 +124,11 @@ func (h *AuthHandler) Callback(c fiber.Ctx) error {
 		return fmt.Errorf("auth: rotate csrf: %w", err)
 	}
 
-	return c.Redirect().To("/me")
+	return c.Redirect().To("/dashboard")
 }
 
 // Logout is a POST since it has a side effect (destroying the session), and
-// so it's called via hx-post from the Me page.
+// so it's called via hx-post from the dashboard shell's "Çıkış yap" button.
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	if err := session.Logout(c); err != nil {
 		return fmt.Errorf("auth: logout: %w", err)
@@ -127,4 +139,9 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	}
 
 	return htmx.Redirect(c, "/login")
+}
+
+func render(c fiber.Ctx, component templ.Component) error {
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return component.Render(c.Context(), c.Response().BodyWriter())
 }
