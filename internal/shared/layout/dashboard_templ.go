@@ -54,9 +54,9 @@ type DashboardProps struct {
 // hx-select carves the new page's own #dashboard-content out of its (still
 // server-rendered, doctype-and-all) full-page response, and the sidebar/
 // breadcrumbs re-sync via hx-swap-oob elsewhere in that same response —
-// no separate partial-render path needed server-side. Links that leave the
-// shell entirely (e.g. Profilim -> /me, a different page shell) opt out
-// with an explicit hx-boost="false" in their NavItem.Attrs.
+// no separate partial-render path needed server-side. A link that must
+// leave the shell entirely (a different page shell, e.g. Base) opts out
+// with an explicit hx-boost="false" in its NavItem.Attrs.
 func Dashboard(p DashboardProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -145,7 +145,7 @@ func Dashboard(p DashboardProps) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Items: p.NavItems, ActivePath: p.Path}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Logo: icons.Logo, Items: p.NavItems, ActivePath: p.Path}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -181,7 +181,7 @@ func Dashboard(p DashboardProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></header><main id=\"dashboard-content\" class=\"flex w-full flex-1 flex-col px-4 py-4 lg:px-0 lg:py-0\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></header><main id=\"dashboard-content\" class=\"flex w-full flex-1 flex-col px-4 py-4 lg:px-2 lg:py-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

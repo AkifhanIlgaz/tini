@@ -46,9 +46,9 @@ type DashboardProps struct {
 // hx-select carves the new page's own #dashboard-content out of its (still
 // server-rendered, doctype-and-all) full-page response, and the sidebar/
 // breadcrumbs re-sync via hx-swap-oob elsewhere in that same response —
-// no separate partial-render path needed server-side. Links that leave the
-// shell entirely (e.g. Profilim -> /me, a different page shell) opt out
-// with an explicit hx-boost="false" in their NavItem.Attrs.
+// no separate partial-render path needed server-side. A link that must
+// leave the shell entirely (a different page shell, e.g. Base) opts out
+// with an explicit hx-boost="false" in its NavItem.Attrs.
 templ Dashboard(p DashboardProps) {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -63,7 +63,7 @@ templ Dashboard(p DashboardProps) {
 				hx-swap="innerHTML show:window:top"
 				hx-push-url="true"
 			>
-				@sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Items: p.NavItems, ActivePath: p.Path}) {
+				@sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Logo: icons.Logo, Items: p.NavItems, ActivePath: p.Path}) {
 					for _, it := range p.FooterItems {
 						@sidebar.Link(p.Path, it)
 					}
@@ -90,7 +90,7 @@ templ Dashboard(p DashboardProps) {
 							@themetoggle.Toggle()
 						</div>
 					</header>
-					<main id="dashboard-content" class="flex w-full flex-1 flex-col px-4 py-4 lg:px-0 lg:py-0 ">
+					<main id="dashboard-content" class="flex w-full flex-1 flex-col px-4 py-4 lg:px-2 lg:py-2 ">
 						{ children... }
 					</main>
 				</div>
