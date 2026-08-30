@@ -34,7 +34,7 @@ func logoIcon(p Props) IconFunc {
 templ Sidebar(p Props) {
 	<aside id="app-sidebar" class="sidebar" hx-swap-oob="true">
 		<div class="sidebar-head">
-			<a href={ templ.URL(utils.If(p.AppHref == "", "/", p.AppHref)) } class="sidebar-brand">
+			<a href={ templ.URL(utils.If(p.AppHref == "", "/", p.AppHref)) } class="sidebar-brand ">
 				@NavIcon(logoIcon(p))
 				<span class="sidebar-label truncate text-lg font-semibold text-foreground">{ p.AppName }</span>
 			</a>
