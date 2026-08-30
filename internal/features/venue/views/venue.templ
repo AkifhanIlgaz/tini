@@ -16,7 +16,6 @@ templ Info(u session.User, path string, csrfToken string) {
 		User:        u,
 		Crumbs:      []layout.Crumb{{Label: "Anasayfa", Href: "/dashboard"}, {Label: "Mekan bilgileri"}},
 		AppName:     layout.AppName,
-		NavItems:    layout.NavItems,
 		FooterItems: layout.FooterItems,
 	}) {
 		@card.Card(card.Props{}) {

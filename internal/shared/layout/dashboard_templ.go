@@ -38,7 +38,6 @@ type DashboardProps struct {
 	// (see internal/features/dashboard for the demo lists). Çıkış yap is
 	// always appended after FooterItems as a danger-styled action button,
 	// not a NavItem, since it POSTs rather than navigates.
-	NavItems    []sidebar.NavItem
 	FooterItems []sidebar.NavItem
 }
 
@@ -78,6 +77,10 @@ func Dashboard(p DashboardProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		navItems := NavItems
+		if p.User.Role == session.RoleAdmin {
+			navItems = AdminNavItems
+		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -145,7 +148,7 @@ func Dashboard(p DashboardProps) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Logo: icons.Logo, Items: p.NavItems, ActivePath: p.Path}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Logo: icons.Logo, Items: navItems, ActivePath: p.Path}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -259,7 +262,7 @@ func Breadcrumbs(crumbs []Crumb) templ.Component {
 						var templ_7745c5c3_Var7 string
 						templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.Label)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/shared/layout/dashboard.templ`, Line: 112, Col: 14}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/shared/layout/dashboard.templ`, Line: 118, Col: 14}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 						if templ_7745c5c3_Err != nil {

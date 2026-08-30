@@ -20,6 +20,14 @@ var NavItems = []sidebar.NavItem{
 	{Label: "Kullanıcılar", Href: "/users", Icon: icons.Users},
 }
 
+var AdminNavItems = []sidebar.NavItem{
+	{Label: "Anasayfa", Href: "/dashboard", Icon: icons.House},
+	{Label: "Playlist", Href: "/playlist", Icon: icons.ListMusic},
+	{Label: "QR Kod", Href: "/qr-kod", Icon: icons.QrCode},
+	{Label: "Oylama", Href: "/oylama", Icon: icons.Vote},
+	{Label: "Mekan bilgileri", Href: "/venue", Icon: icons.Building2},
+}
+
 // FooterItems renders below NavItems, above the always-present Çıkış yap
 // button (see Dashboard) — account-level pages rather than app navigation.
 // Currently empty; kept as a slice (not removed) so DashboardProps.FooterItems

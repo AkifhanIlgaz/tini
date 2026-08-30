@@ -92,7 +92,7 @@ func Dashboard(u session.User, path string, csrfToken string) templ.Component {
 						var templ_7745c5c3_Var6 string
 						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(u.Email)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/dashboard/views/dashboard.templ`, Line: 25, Col: 27}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/dashboard/views/dashboard.templ`, Line: 24, Col: 27}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 						if templ_7745c5c3_Err != nil {
@@ -151,7 +151,6 @@ func Dashboard(u session.User, path string, csrfToken string) templ.Component {
 			User:        u,
 			Crumbs:      dashboardCrumbs(),
 			AppName:     layout.AppName,
-			NavItems:    layout.NavItems,
 			FooterItems: layout.FooterItems,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

@@ -17,7 +17,6 @@ templ Placeholder(u session.User, path string, csrfToken string, title string, p
 		User:        u,
 		Crumbs:      pageCrumbs,
 		AppName:     layout.AppName,
-		NavItems:    layout.NavItems,
 		FooterItems: layout.FooterItems,
 	}) {
 		<span>{ title }</span>

@@ -38,7 +38,6 @@ templ Users(u session.User, path string, csrfToken string, rows []UserRow) {
 		User:        u,
 		Crumbs:      []layout.Crumb{{Label: "Panel", Href: "/dashboard"}, {Label: "Kullanıcılar"}},
 		AppName:     layout.AppName,
-		NavItems:    layout.NavItems,
 		FooterItems: layout.FooterItems,
 	}) {
 		<div class="mb-4">

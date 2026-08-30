@@ -16,7 +16,6 @@ templ Dashboard(u session.User, path string, csrfToken string) {
 		User:      u,
 		Crumbs:      dashboardCrumbs(),
 		AppName:     layout.AppName,
-		NavItems:    layout.NavItems,
 		FooterItems: layout.FooterItems,
 	}) {
 		@card.Card(card.Props{}) {

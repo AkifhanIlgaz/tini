@@ -142,7 +142,6 @@ func Info(u session.User, path string, csrfToken string) templ.Component {
 			User:        u,
 			Crumbs:      []layout.Crumb{{Label: "Anasayfa", Href: "/dashboard"}, {Label: "Mekan bilgileri"}},
 			AppName:     layout.AppName,
-			NavItems:    layout.NavItems,
 			FooterItems: layout.FooterItems,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

@@ -318,7 +318,6 @@ func Users(u session.User, path string, csrfToken string, rows []UserRow) templ.
 			User:        u,
 			Crumbs:      []layout.Crumb{{Label: "Panel", Href: "/dashboard"}, {Label: "Kullanıcılar"}},
 			AppName:     layout.AppName,
-			NavItems:    layout.NavItems,
 			FooterItems: layout.FooterItems,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -536,7 +535,7 @@ func userRow(row UserRow) templ.Component {
 						var templ_7745c5c3_Var23 string
 						templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(initial(row.Name))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 108, Col: 25}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 107, Col: 25}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 						if templ_7745c5c3_Err != nil {
@@ -561,7 +560,7 @@ func userRow(row UserRow) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(row.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 111, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 110, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -596,7 +595,7 @@ func userRow(row UserRow) templ.Component {
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(row.Email)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 115, Col: 14}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 114, Col: 14}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -651,7 +650,7 @@ func userRow(row UserRow) templ.Component {
 						var templ_7745c5c3_Var30 string
 						templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(row.RoleLabel)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 120, Col: 20}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 119, Col: 20}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 						if templ_7745c5c3_Err != nil {
@@ -866,7 +865,7 @@ func deleteUserDialog(row UserRow) templ.Component {
 								var templ_7745c5c3_Var40 string
 								templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(row.Name)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 157, Col: 17}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/features/user/views/users.templ`, Line: 156, Col: 17}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 								if templ_7745c5c3_Err != nil {

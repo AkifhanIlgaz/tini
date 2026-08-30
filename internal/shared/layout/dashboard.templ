@@ -30,7 +30,6 @@ type DashboardProps struct {
 	// (see internal/features/dashboard for the demo lists). Çıkış yap is
 	// always appended after FooterItems as a danger-styled action button,
 	// not a NavItem, since it POSTs rather than navigates.
-	NavItems    []sidebar.NavItem
 	FooterItems []sidebar.NavItem
 }
 
@@ -50,6 +49,13 @@ type DashboardProps struct {
 // leave the shell entirely (a different page shell, e.g. Base) opts out
 // with an explicit hx-boost="false" in its NavItem.Attrs.
 templ Dashboard(p DashboardProps) {
+	{{
+		navItems := NavItems
+		if p.User.Role == session.RoleAdmin {
+			navItems = AdminNavItems
+		}
+	}}
+
 	<!DOCTYPE html>
 	<html lang="en">
 		@head(p.Title, p.CSRFToken)
@@ -63,7 +69,7 @@ templ Dashboard(p DashboardProps) {
 				hx-swap="innerHTML show:window:top"
 				hx-push-url="true"
 			>
-				@sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Logo: icons.Logo, Items: p.NavItems, ActivePath: p.Path}) {
+				@sidebar.Sidebar(sidebar.Props{AppName: p.AppName, Logo: icons.Logo, Items: navItems, ActivePath: p.Path}) {
 					for _, it := range p.FooterItems {
 						@sidebar.Link(p.Path, it)
 					}
