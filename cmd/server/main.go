@@ -12,8 +12,8 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/config"
 	"github.com/AkifhanIlgaz/tini/internal/features/auth"
 	"github.com/AkifhanIlgaz/tini/internal/features/dashboard"
-	"github.com/AkifhanIlgaz/tini/internal/features/home"
 	"github.com/AkifhanIlgaz/tini/internal/features/user"
+	"github.com/AkifhanIlgaz/tini/internal/features/venue"
 	"github.com/AkifhanIlgaz/tini/internal/platform/csrf"
 	"github.com/AkifhanIlgaz/tini/internal/platform/logging"
 	db "github.com/AkifhanIlgaz/tini/internal/platform/mongo"
@@ -48,13 +48,13 @@ func main() {
 		}
 	}()
 
-	users := user.NewRepository(mongoClient)
-	if err := users.EnsureIndexes(ctx); err != nil {
-		slog.Error("users.EnsureIndexes", "error", err)
+	usersRepo, err := user.NewRepository(mongoClient)
+	if err != nil {
+		slog.Error("user.NewRepository", "error", err)
 		os.Exit(1)
 	}
 
-	authHandler := auth.NewAuthHandler(users)
+	authHandler := auth.NewAuthHandler(usersRepo)
 	authHandler.RegisterProviders(cfg)
 
 	sessionStore := session.NewStore(cfg)
@@ -69,9 +69,12 @@ func main() {
 		return c.SendString("ok")
 	})
 
+	userService := user.NewService(usersRepo)
+
 	authHandler.RegisterRoutes(app)
-	home.NewHandler().RegisterRoutes(app)
 	dashboard.NewHandler().RegisterRoutes(app)
+	user.NewHandler(userService).RegisterRoutes(app)
+	venue.NewHandler().RegisterRoutes(app)
 
 	go func() {
 		slog.Info("server listening", "port", cfg.Server.Port, "env", cfg.Env)
