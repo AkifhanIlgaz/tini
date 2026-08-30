@@ -3,8 +3,6 @@
 package session
 
 import (
-	"slices"
-
 	"github.com/AkifhanIlgaz/tini/internal/config"
 	"github.com/gofiber/fiber/v3"
 	fsession "github.com/gofiber/fiber/v3/middleware/session"
@@ -14,17 +12,42 @@ import (
 
 const userKey = "user"
 
-// User is the snapshot stored in the session on login: enough to render
-// nav/UI and authorize requests without a Mongo round-trip on every request.
-// ID mirrors the Mongo _id of the persisted user record.
-type User struct {
-	ID    bson.ObjectID
-	Email string
-	Roles []string
+// Role identifies what a logged-in user is allowed to do. It lives here
+// rather than in the user feature package so that both session and
+// internal/shared/middleware (which authorize requests by role) can depend
+// on it without importing a feature — user.Role is a type alias to this
+// (see internal/features/user/user_domain.go) so existing call sites
+// (user.RoleBoss, etc.) are unaffected.
+type Role string
+
+const (
+	RoleAdmin Role = "admin"
+	RoleBoss  Role = "boss"
+)
+
+// IsValid reports whether r is one of the known Role values.
+func (r Role) IsValid() bool {
+	switch r {
+	case RoleAdmin, RoleBoss:
+		return true
+	default:
+		return false
+	}
 }
 
-func (u User) HasRole(role string) bool {
-	return slices.Contains(u.Roles, role)
+// User is the snapshot stored in the session on login: enough to render
+// nav/UI and authorize requests without a Mongo round-trip on every request.
+// ID/VenueID mirror the Mongo _id/venue_id of the persisted user record.
+type User struct {
+	ID      bson.ObjectID
+	VenueID bson.ObjectID
+	Email   string
+	Name    string
+	Role    Role
+}
+
+func (u User) HasRole(role Role) bool {
+	return u.Role == role
 }
 
 // NewStore builds the session store backed by Redis.

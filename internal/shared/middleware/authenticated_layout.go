@@ -11,7 +11,7 @@ import (
 // redirecting anonymous requests to /login. When roles are given, the
 // user must hold at least one of them or the request is rejected with
 // 403 — pass none to only require being logged in.
-func AuthenticatedLayout(roles ...string) fiber.Handler {
+func AuthenticatedLayout(roles ...session.Role) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		u, ok := session.GetCurrentUser(c)
 		if !ok {
@@ -26,7 +26,7 @@ func AuthenticatedLayout(roles ...string) fiber.Handler {
 	}
 }
 
-func hasAnyRole(u session.User, roles []string) bool {
+func hasAnyRole(u session.User, roles []session.Role) bool {
 	for _, role := range roles {
 		if u.HasRole(role) {
 			return true
