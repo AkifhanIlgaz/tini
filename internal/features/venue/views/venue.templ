@@ -1,14 +1,37 @@
 package views
 
 import (
+	"strconv"
+
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/button"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/card"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/field"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/form"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/textfield"
+	"github.com/AkifhanIlgaz/tini/internal/shared/icons"
 	"github.com/AkifhanIlgaz/tini/internal/shared/layout"
 )
 
-// Info is a placeholder for the venue feature's own page — swap it for real
-// content once the venue repository/service exist (see venue_domain.go).
-templ Info(u session.User, path string, csrfToken string) {
+// GeneralForm is the Mekan bilgileri page's own view-model for venue.Venue's
+// Name — kept separate for the same reason SettingsForm is (see its doc
+// comment).
+type GeneralForm struct {
+	Name string
+}
+
+// SettingsForm is the Mekan bilgileri page's own view-model for
+// venue.VenueSettings — kept separate so this views package doesn't have to
+// import its parent package (venue_handler.go already imports views, and
+// views importing venue back would be an import cycle).
+type SettingsForm struct {
+	RoundIntervalMin          int
+	CandidateCount            int
+	RecentlyPlayedCooldownMin int
+	CandidateCooldownMin      int
+}
+
+templ Info(u session.User, path string, csrfToken string, general GeneralForm, settings SettingsForm) {
 	@layout.Dashboard(layout.DashboardProps{
 		Title:       "Mekan bilgileri",
 		CSRFToken:   csrfToken,
@@ -18,15 +41,76 @@ templ Info(u session.User, path string, csrfToken string) {
 		AppName:     layout.AppName,
 		FooterItems: layout.FooterItems,
 	}) {
-		@card.Card(card.Props{}) {
-			@card.Header() {
-				@card.Title() {
-					Mekan bilgileri
+		<div class="grid gap-4 lg:grid-cols-2 lg:items-start">
+			@qrCard()
+			@settingsCard(general, settings)
+		</div>
+	}
+}
+
+templ qrCard() {
+	@card.Card(card.Props{}) {
+		@card.Header() {
+			@card.Title() {
+				QR Kod
+			}
+			@card.Description() {
+				Müşteriler bu kodu okutarak mekana bağlanır.
+			}
+		}
+		@card.Content("items-center", "gap-4") {
+			<div class="flex aspect-square w-full max-w-56 items-center justify-center rounded-2xl border border-dashed border-border p-8 text-muted">
+				@icons.QrCode()
+			</div>
+			@button.Button(button.Props{Variant: button.VariantOutline}) {
+				@icons.Download()
+				İndir
+			}
+		}
+	}
+}
+
+templ settingsCard(general GeneralForm, settings SettingsForm) {
+	@card.Card(card.Props{}) {
+		@card.Header() {
+			@card.Title() {
+				Mekan bilgileri
+			}
+			@card.Description() {
+				Mekanının adı ve oylama turlarının nasıl işleyeceği buradan yönetilir.
+			}
+		}
+		@card.Content() {
+			@form.Form(form.Props{}, "flex flex-col gap-4") {
+				@textfield.TextField(textfield.Props{Name: "name", Type: "text", Value: general.Name, IsRequired: true}) {
+					@field.Label(field.LabelProps{}) {
+						Mekan adı
+					}
+					@textfield.Input(textfield.InputProps{Placeholder: "Mekanının adını gir"})
 				}
-				@card.Description() {
-					Venue bilgileri burada yönetilecek.
+				@settingsField("roundIntervalMin", "Tur aralığı (dk)", settings.RoundIntervalMin, "Her oylama turu bu kadar dakikada bir başlar.")
+				@settingsField("candidateCount", "Aday sayısı", settings.CandidateCount, "Her turda kaç şarkı aday olarak gösterilir.")
+				@settingsField("recentlyPlayedCooldownMin", "Son çalınanlar bekleme süresi (dk)", settings.RecentlyPlayedCooldownMin, "Bir şarkının tekrar aday/fallback olabilmesi için son çalınışından bu kadar dakika geçmesi gerekir.")
+				@settingsField("candidateCooldownMin", "Aday bekleme süresi (dk)", settings.CandidateCooldownMin, "Bir şarkının turda tekrar aday olabilmesi için son aday olduğu andan bu kadar dakika geçmesi gerekir.")
+				@button.Button(button.Props{Attrs: templ.Attributes{"hx-post": "/venue/save", "hx-swap": "none"}}, "self-start") {
+					Kaydet
 				}
 			}
+		}
+	}
+}
+
+// settingsField renders one number input pre-filled with value — htmx
+// serializes it from the closest <form> when the Kaydet button (a plain
+// hx-post, not a native submit — see button.Button's doc comment) fires.
+templ settingsField(name string, label string, value int, description string) {
+	@textfield.TextField(textfield.Props{Name: name, Type: "number", Value: strconv.Itoa(value), IsRequired: true}) {
+		@field.Label(field.LabelProps{}) {
+			{ label }
+		}
+		@textfield.Input(textfield.InputProps{Attrs: templ.Attributes{"min": "0"}})
+		@field.Description() {
+			{ description }
 		}
 	}
 }
