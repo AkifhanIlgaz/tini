@@ -1,0 +1,217 @@
+package views
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/alertdialog"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/button"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/card"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/field"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/form"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/pagination"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/table"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/textfield"
+	"github.com/AkifhanIlgaz/tini/internal/shared/icons"
+	"github.com/AkifhanIlgaz/tini/internal/shared/layout"
+)
+
+// PlaylistRow is the Playlist page's own view-model — kept separate from
+// any future playlist domain type for the same reason user's UserRow is
+// (see its doc comment).
+type PlaylistRow struct {
+	ID    string
+	Title string
+	URL   string
+}
+
+// PageInfo carries the current page/size and enough context to render the
+// pager and the per-page-size links.
+type PageInfo struct {
+	Page            int
+	PageSize        int
+	TotalPages      int
+	TotalItems      int
+	PageSizeOptions []int
+}
+
+templ Playlist(u session.User, path string, csrfToken string, rows []PlaylistRow, page PageInfo) {
+	@layout.Dashboard(layout.DashboardProps{
+		Title:       "Playlist",
+		CSRFToken:   csrfToken,
+		Path:        path,
+		User:        u,
+		Crumbs:      []layout.Crumb{{Label: "Anasayfa", Href: "/dashboard"}, {Label: "Playlist"}},
+		AppName:     layout.AppName,
+		FooterItems: layout.FooterItems,
+	}) {
+		<div class="mb-4">
+			<h1 class="text-lg font-bold text-foreground">Playlist</h1>
+			<p class="text-sm text-muted/70">Venue'nün çalma listesine YouTube linki ekle veya kaldır.</p>
+		</div>
+		@card.Card(card.Props{}, "mb-4") {
+			@card.Header() {
+				@card.Description() {
+					Eklediğin linkler oylama turlarında aday olarak gösterilir.
+				}
+			}
+			@card.Content() {
+				@addLinkForm()
+			}
+		}
+		@table.Table(table.Props{}) {
+			@table.Header() {
+				@table.Column() {
+					Şarkı
+				}
+				@table.Column() {
+					Link
+				}
+				@table.Column()
+			}
+			@table.Body() {
+				for _, row := range rows {
+					@playlistRow(row)
+				}
+			}
+		}
+		@paginationBar(page)
+	}
+}
+
+// addLinkForm POSTs to /playlist on the button click (not a native submit
+// — button.Button always renders type="button", see its doc comment) with
+// hx-swap="none": htmx still serializes the closest <form>'s fields for a
+// non-form-element trigger, so the url input's value goes along. Success
+// responds with HX-Redirect (back to this same page, see Handler.Add); an
+// empty-link failure responds with a toast instead, leaving the form
+// filled in.
+templ addLinkForm() {
+	@form.Form(form.Props{}, "flex flex-col items-stretch gap-2 sm:flex-row sm:items-end") {
+		@textfield.TextField(textfield.Props{Name: "url", Type: "url", IsRequired: true}, "w-full sm:min-w-64") {
+			@field.Label(field.LabelProps{}) {
+				Link
+			}
+			@textfield.Input(textfield.InputProps{Placeholder: "YouTube linkini yapıştır"})
+		}
+		@button.Button(button.Props{Attrs: templ.Attributes{"hx-post": "/playlist", "hx-swap": "none"}}) {
+			Ekle
+		}
+	}
+}
+
+templ playlistRow(row PlaylistRow) {
+	@table.Row() {
+		@table.Cell("") {
+			<span class="font-medium text-foreground">{ row.Title }</span>
+		}
+		@table.Cell("") {
+			<a href={ templ.URL(row.URL) } target="_blank" rel="noreferrer" class="text-accent underline-offset-2 hover:underline">
+				{ row.URL }
+			</a>
+		}
+		@table.Cell() {
+			<div class="flex justify-end">
+				@deletePlaylistDialog(row)
+			</div>
+		}
+	}
+}
+
+templ deletePlaylistDialog(row PlaylistRow) {
+	@alertdialog.AlertDialog() {
+		@button.Button(button.Props{Variant: button.VariantDangerSoft, Size: button.SizeSm}) {
+			@icons.Trash2()
+			Sil
+		}
+		@alertdialog.AlertDialogBackdrop(alertdialog.BackdropProps{IsDismissable: true}) {
+			@alertdialog.AlertDialogContainer(alertdialog.ContainerProps{}) {
+				@alertdialog.AlertDialogDialog() {
+					@alertdialog.AlertDialogIcon(alertdialog.IconProps{Status: alertdialog.StatusDanger})
+					@alertdialog.AlertDialogHeader() {
+						@alertdialog.AlertDialogHeading() {
+							{ row.Title } listeden kaldırılsın mı?
+						}
+					}
+					@alertdialog.AlertDialogBody() {
+						<p>Bu işlem geri alınamaz.</p>
+					}
+					@alertdialog.AlertDialogFooter() {
+						@button.Button(button.Props{Variant: button.VariantGhost, Attrs: templ.Attributes{"slot": "close"}}) {
+							Vazgeç
+						}
+						@button.Button(button.Props{
+							Variant: button.VariantDanger,
+							Attrs:   templ.Attributes{"slot": "close", "hx-post": "/playlist/" + row.ID + "/delete"},
+						}) {
+							Sil
+						}
+					}
+					@alertdialog.AlertDialogCloseTrigger()
+				}
+			}
+		}
+	}
+}
+
+// paginationBar's page-number/prev/next buttons and page-size links all
+// carry a plain hx-get — the outer boosted wrapper (see
+// internal/shared/layout.Dashboard) already sets hx-target/hx-select/
+// hx-swap/hx-push-url, and htmx elements inherit those from an ancestor
+// regardless of hx-boost, so no per-button repetition is needed here.
+templ paginationBar(page PageInfo) {
+	<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		@pagination.Pagination(pagination.Props{Size: pagination.SizeSm}) {
+			@pagination.Summary() {
+				{ summaryText(page) }
+			}
+			@pagination.Content() {
+				@pagination.Item() {
+					@pagination.Previous(pagination.NavProps{IsDisabled: page.Page <= 1, Attrs: templ.Attributes{"hx-get": pageHref(page.Page-1, page.PageSize)}}) {
+						@pagination.PreviousIcon()
+					}
+				}
+				for n := 1; n <= page.TotalPages; n++ {
+					@pagination.Item() {
+						@pagination.Link(pagination.LinkProps{IsActive: n == page.Page, Attrs: templ.Attributes{"hx-get": pageHref(n, page.PageSize)}}) {
+							{ strconv.Itoa(n) }
+						}
+					}
+				}
+				@pagination.Item() {
+					@pagination.Next(pagination.NavProps{IsDisabled: page.Page >= page.TotalPages, Attrs: templ.Attributes{"hx-get": pageHref(page.Page+1, page.PageSize)}}) {
+						@pagination.NextIcon()
+					}
+				}
+			}
+		}
+		<div class="flex items-center gap-2 text-sm text-muted">
+			<span>Sayfa başına:</span>
+			for _, size := range page.PageSizeOptions {
+				@pageSizeLink(size, page.PageSize)
+			}
+		</div>
+	</div>
+}
+
+templ pageSizeLink(size int, current int) {
+	@pagination.Link(pagination.LinkProps{IsActive: size == current, Attrs: templ.Attributes{"hx-get": pageHref(1, size)}}, "px-2") {
+		{ strconv.Itoa(size) }
+	}
+}
+
+func summaryText(p PageInfo) string {
+	if p.TotalItems == 0 {
+		return "Sonuç yok"
+	}
+
+	start := (p.Page-1)*p.PageSize + 1
+	end := min(p.Page*p.PageSize, p.TotalItems)
+
+	return fmt.Sprintf("%d sonuçtan %d-%d arası gösteriliyor", p.TotalItems, start, end)
+}
+
+func pageHref(page, pageSize int) string {
+	return fmt.Sprintf("/playlist?page=%d&pageSize=%d", page, pageSize)
+}

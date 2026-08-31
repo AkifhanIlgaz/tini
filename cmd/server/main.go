@@ -12,6 +12,7 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/config"
 	"github.com/AkifhanIlgaz/tini/internal/features/auth"
 	"github.com/AkifhanIlgaz/tini/internal/features/dashboard"
+	"github.com/AkifhanIlgaz/tini/internal/features/playlist"
 	"github.com/AkifhanIlgaz/tini/internal/features/user"
 	"github.com/AkifhanIlgaz/tini/internal/features/venue"
 	"github.com/AkifhanIlgaz/tini/internal/platform/csrf"
@@ -73,6 +74,7 @@ func main() {
 
 	authHandler.RegisterRoutes(app)
 	dashboard.NewHandler().RegisterRoutes(app)
+	playlist.NewHandler().RegisterRoutes(app)
 	user.NewHandler(userService).RegisterRoutes(app)
 	venue.NewHandler().RegisterRoutes(app)
 
