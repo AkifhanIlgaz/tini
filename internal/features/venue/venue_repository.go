@@ -12,24 +12,24 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-type Repository interface {
+type VenueRepository interface {
 	FindByID(ctx context.Context, id bson.ObjectID) (Venue, error)
 	Update(ctx context.Context, id bson.ObjectID, name string, settings VenueSettings) (Venue, error)
 }
 
-type mongoRepository struct {
+type venueMongoRepository struct {
 	collection *mongo.Collection
 }
 
-func NewRepository(client *db.Client) (Repository, error) {
-	collection := client.Database().Collection(CollectionName)
+func NewRepository(client *db.Client) (VenueRepository, error) {
+	collection := client.Database().Collection(VenueCollectionName)
 
-	return &mongoRepository{
+	return &venueMongoRepository{
 		collection: collection,
 	}, nil
 }
 
-func (r *mongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (Venue, error) {
+func (r *venueMongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (Venue, error) {
 	var v Venue
 
 	filter := bson.M{
@@ -48,7 +48,7 @@ func (r *mongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (Venue
 	return v, nil
 }
 
-func (r *mongoRepository) Update(ctx context.Context, id bson.ObjectID, name string, settings VenueSettings) (Venue, error) {
+func (r *venueMongoRepository) Update(ctx context.Context, id bson.ObjectID, name string, settings VenueSettings) (Venue, error) {
 	var v Venue
 
 	filter := bson.M{

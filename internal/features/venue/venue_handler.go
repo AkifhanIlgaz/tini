@@ -12,22 +12,22 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type Handler struct {
-	service *Service
+type VenueHandler struct {
+	service *VenueService
 }
 
-func NewHandler(s *Service) *Handler {
-	return &Handler{service: s}
+func NewHandler(s *VenueService) *VenueHandler {
+	return &VenueHandler{service: s}
 }
 
-func (h *Handler) RegisterRoutes(app *fiber.App) {
+func (h *VenueHandler) RegisterRoutes(app *fiber.App) {
 	guard := middleware.AuthenticatedLayout()
 
 	app.Get("/venue", guard, h.Info)
 	app.Post("/venue/save", guard, h.Save)
 }
 
-func (h *Handler) Info(c fiber.Ctx) error {
+func (h *VenueHandler) Info(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	req := GetVenueRequest{
@@ -47,7 +47,7 @@ func (h *Handler) Info(c fiber.Ctx) error {
 	return htmx.Render(c, views.Info(u, c.Path(), csrf.Token(c), general, settings, nil))
 }
 
-func (h *Handler) Save(c fiber.Ctx) error {
+func (h *VenueHandler) Save(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	req := UpdateVenueRequest{

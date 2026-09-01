@@ -14,7 +14,7 @@ import (
 
 const usersCollectionName = "users"
 
-type Repository interface {
+type UserRepository interface {
 	CreateAdmin(ctx context.Context, u User) (User, error)
 	ListUsersByVenue(ctx context.Context, venueID bson.ObjectID) ([]User, error)
 	DeleteAdmin(ctx context.Context, venueID, adminID bson.ObjectID) error
@@ -24,11 +24,11 @@ type Repository interface {
 	SetVenueID(ctx context.Context, userID, venueID bson.ObjectID) error
 }
 
-type mongoRepository struct {
+type userMongoRepository struct {
 	collection *mongo.Collection
 }
 
-func NewRepository(client *db.Client) (Repository, error) {
+func NewRepository(client *db.Client) (UserRepository, error) {
 	collection := client.Database().Collection(usersCollectionName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -57,7 +57,7 @@ func NewRepository(client *db.Client) (Repository, error) {
 		return nil, fmt.Errorf("user: create indexes: %w", err)
 	}
 
-	return &mongoRepository{
+	return &userMongoRepository{
 		collection: collection,
 	}, nil
 }
@@ -65,7 +65,7 @@ func NewRepository(client *db.Client) (Repository, error) {
 // CreateAdmin inserts u as a pre-provisioned admin — the caller is
 // responsible for setting Email/VenueID/Role before an invited admin has
 // ever logged in via Google.
-func (r *mongoRepository) CreateAdmin(ctx context.Context, u User) (User, error) {
+func (r *userMongoRepository) CreateAdmin(ctx context.Context, u User) (User, error) {
 	now := time.Now()
 	u.CreatedAt = now
 	u.UpdatedAt = now
@@ -87,7 +87,7 @@ func (r *mongoRepository) CreateAdmin(ctx context.Context, u User) (User, error)
 // DeleteAdmin deletes adminID, but only if it's actually an admin of
 // venueID — the filter itself is the ownership check, so a boss can't
 // remove an admin belonging to another venue.
-func (r *mongoRepository) DeleteAdmin(ctx context.Context, venueID, adminID bson.ObjectID) error {
+func (r *userMongoRepository) DeleteAdmin(ctx context.Context, venueID, adminID bson.ObjectID) error {
 	filter := bson.M{
 		"_id":      adminID,
 		"venue_id": venueID,
@@ -108,7 +108,7 @@ func (r *mongoRepository) DeleteAdmin(ctx context.Context, venueID, adminID bson
 
 // ListUsersByVenue returns every user (boss and admins alike) belonging to
 // venueID.
-func (r *mongoRepository) ListUsersByVenue(ctx context.Context, venueID bson.ObjectID) ([]User, error) {
+func (r *userMongoRepository) ListUsersByVenue(ctx context.Context, venueID bson.ObjectID) ([]User, error) {
 	filter := bson.M{
 		"venue_id": venueID,
 	}
@@ -128,7 +128,7 @@ func (r *mongoRepository) ListUsersByVenue(ctx context.Context, venueID bson.Obj
 
 // SetVenueID attaches venueID to the user identified by userID — used once
 // a boss finishes creating their venue.
-func (r *mongoRepository) SetVenueID(ctx context.Context, userID, venueID bson.ObjectID) error {
+func (r *userMongoRepository) SetVenueID(ctx context.Context, userID, venueID bson.ObjectID) error {
 	filter := bson.M{
 		"_id": userID,
 	}
@@ -148,7 +148,7 @@ func (r *mongoRepository) SetVenueID(ctx context.Context, userID, venueID bson.O
 	return nil
 }
 
-func (r *mongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (User, error) {
+func (r *userMongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (User, error) {
 	var u User
 
 	filter := bson.M{
@@ -167,7 +167,7 @@ func (r *mongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (User,
 	return u, nil
 }
 
-func (r *mongoRepository) FindByEmail(ctx context.Context, email string) (User, error) {
+func (r *userMongoRepository) FindByEmail(ctx context.Context, email string) (User, error) {
 	var u User
 
 	filter := bson.M{
@@ -190,7 +190,7 @@ func (r *mongoRepository) FindByEmail(ctx context.Context, email string) (User, 
 // subsequent logins — email is the stable key Google OAuth gives us.
 // Roles is left untouched on update: role changes are managed separately,
 // not overwritten by whatever Google returns.
-func (r *mongoRepository) Upsert(ctx context.Context, email, name, avatarURL string) (User, error) {
+func (r *userMongoRepository) Upsert(ctx context.Context, email, name, avatarURL string) (User, error) {
 	var u User
 
 	now := time.Now()

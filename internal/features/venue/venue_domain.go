@@ -1,7 +1,7 @@
 // Package venue is the venue feature: the "Mekan bilgileri" page (QR kod +
 // ayarlar formu) over a Mongo-backed repository. There's no way to create a
 // venue through the app yet — cmd/seed writes the initial document directly
-// — so Repository only supports reading and updating one that already
+// — so VenueRepository only supports reading and updating one that already
 // exists.
 package venue
 
@@ -11,8 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// CollectionName is the Mongo collection Venue documents live in.
-const CollectionName = "venues"
+// VenueCollectionName is the Mongo collection Venue documents live in.
+const VenueCollectionName = "venues"
 
 type VenueSettings struct {
 	RoundIntervalMin int `bson:"round_interval_min" json:"roundIntervalMin"`

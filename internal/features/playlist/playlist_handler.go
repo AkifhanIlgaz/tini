@@ -21,13 +21,13 @@ const defaultPageSize = 10
 
 var pageSizeOptions = []int{10, 20, 50}
 
-type Handler struct{}
+type PlaylistHandler struct{}
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler() *PlaylistHandler {
+	return &PlaylistHandler{}
 }
 
-func (h *Handler) RegisterRoutes(app *fiber.App) {
+func (h *PlaylistHandler) RegisterRoutes(app *fiber.App) {
 	guard := middleware.AuthenticatedLayout()
 
 	app.Get("/playlist", guard, h.List)
@@ -35,9 +35,9 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	app.Post("/playlist/:id/delete", guard, h.Delete)
 }
 
-// List paginates mockItems in memory — playlist.Repository doesn't exist
+// List paginates mockItems in memory — playlist.PlaylistRepository doesn't exist
 // yet, so there's nothing real to query until then.
-func (h *Handler) List(c fiber.Ctx) error {
+func (h *PlaylistHandler) List(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	items := mockItems()
@@ -62,8 +62,8 @@ func (h *Handler) List(c fiber.Ctx) error {
 }
 
 // Add only demonstrates the field-error/redirect round-trip for now —
-// nothing is actually persisted until playlist.Repository exists.
-func (h *Handler) Add(c fiber.Ctx) error {
+// nothing is actually persisted until playlist.PlaylistRepository exists.
+func (h *PlaylistHandler) Add(c fiber.Ctx) error {
 	var req AddLinkRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return fmt.Errorf("playlist: add: bind: %w", err)
@@ -82,8 +82,8 @@ func (h *Handler) Add(c fiber.Ctx) error {
 }
 
 // Delete only demonstrates the redirect round-trip for now — nothing is
-// actually removed until playlist.Repository exists.
-func (h *Handler) Delete(c fiber.Ctx) error {
+// actually removed until playlist.PlaylistRepository exists.
+func (h *PlaylistHandler) Delete(c fiber.Ctx) error {
 	if c.Params("id") == "" {
 		return errors.New("playlist: delete: missing id")
 	}
@@ -109,7 +109,7 @@ func parsePageSize(raw string) int {
 	return pageSize
 }
 
-// mockItem stands in for a playlist item until playlist.Repository exists.
+// mockItem stands in for a playlist item until playlist.PlaylistRepository exists.
 type mockItem struct {
 	id    string
 	title string

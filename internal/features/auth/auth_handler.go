@@ -20,10 +20,10 @@ import (
 )
 
 type AuthHandler struct {
-	users user.Repository
+	users user.UserRepository
 }
 
-func NewAuthHandler(users user.Repository) *AuthHandler {
+func NewAuthHandler(users user.UserRepository) *AuthHandler {
 	return &AuthHandler{users: users}
 }
 

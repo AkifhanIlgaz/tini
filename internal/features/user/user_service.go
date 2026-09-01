@@ -5,19 +5,19 @@ import (
 	"fmt"
 )
 
-type Service struct {
-	repo Repository
+type UserService struct {
+	repo UserRepository
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo UserRepository) *UserService {
+	return &UserService{repo: repo}
 }
 
 // InviteAdmin pre-provisions an admin account from req — the admin's own
 // name/avatar are filled in on their first Google login (see
-// Repository.Upsert). req is assumed already validated (see the handler's
+// UserRepository.Upsert). req is assumed already validated (see the handler's
 // req.Validate() call).
-func (s *Service) InviteAdmin(ctx context.Context, req InviteAdminRequest) (User, error) {
+func (s *UserService) InviteAdmin(ctx context.Context, req InviteAdminRequest) (User, error) {
 	created, err := s.repo.CreateAdmin(ctx, req.ToUser())
 	if err != nil {
 		return User{}, fmt.Errorf("user: invite admin: %w", err)
@@ -29,7 +29,7 @@ func (s *Service) InviteAdmin(ctx context.Context, req InviteAdminRequest) (User
 // RemoveAdmin deletes the admin identified by req, but only if it's
 // actually an admin of req.VenueID — a boss can't remove an admin
 // belonging to another venue. req is assumed already validated.
-func (s *Service) RemoveAdmin(ctx context.Context, req RemoveAdminRequest) error {
+func (s *UserService) RemoveAdmin(ctx context.Context, req RemoveAdminRequest) error {
 	if err := s.repo.DeleteAdmin(ctx, req.VenueID, req.AdminID); err != nil {
 		return fmt.Errorf("user: remove admin: %w", err)
 	}
@@ -39,7 +39,7 @@ func (s *Service) RemoveAdmin(ctx context.Context, req RemoveAdminRequest) error
 
 // ListUsers returns every user (boss and admins alike) belonging to
 // req.VenueID. req is assumed already validated.
-func (s *Service) ListUsers(ctx context.Context, req ListUsersRequest) ([]User, error) {
+func (s *UserService) ListUsers(ctx context.Context, req ListUsersRequest) ([]User, error) {
 	users, err := s.repo.ListUsersByVenue(ctx, req.VenueID)
 	if err != nil {
 		return nil, fmt.Errorf("user: list users: %w", err)

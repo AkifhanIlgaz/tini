@@ -13,15 +13,15 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-type Handler struct {
-	service *Service
+type UserHandler struct {
+	service *UserService
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *UserService) *UserHandler {
+	return &UserHandler{service: service}
 }
 
-func (h *Handler) RegisterRoutes(app *fiber.App) {
+func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 	guard := middleware.AuthenticatedLayout(RoleBoss)
 
 	app.Get("/users", guard, h.Users)
@@ -29,7 +29,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	app.Post("/users/:id/delete", guard, h.DeleteAdmin)
 }
 
-func (h *Handler) Users(c fiber.Ctx) error {
+func (h *UserHandler) Users(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	users, err := h.service.ListUsers(c.Context(), ListUsersRequest{VenueID: u.VenueID})
@@ -44,7 +44,7 @@ func (h *Handler) Users(c fiber.Ctx) error {
 // already in use fails softly by re-rendering the invite form with the
 // email field marked invalid, not a 500, since both are expected
 // user-input mistakes rather than server errors.
-func (h *Handler) InviteAdmin(c fiber.Ctx) error {
+func (h *UserHandler) InviteAdmin(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	var req InviteAdminRequest
@@ -74,9 +74,9 @@ func (h *Handler) InviteAdmin(c fiber.Ctx) error {
 }
 
 // DeleteAdmin removes an admin — the boss's own row never carries a delete
-// action (see views.UserRow.IsAdmin), and Repository.DeleteAdmin's filter
+// action (see views.UserRow.IsAdmin), and UserRepository.DeleteAdmin's filter
 // only ever matches an admin belonging to the caller's own venue anyway.
-func (h *Handler) DeleteAdmin(c fiber.Ctx) error {
+func (h *UserHandler) DeleteAdmin(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	adminID, err := bson.ObjectIDFromHex(c.Params("id"))

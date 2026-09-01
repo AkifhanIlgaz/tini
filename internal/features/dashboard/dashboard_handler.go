@@ -13,20 +13,20 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type Handler struct{}
+type DashboardHandler struct{}
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler() *DashboardHandler {
+	return &DashboardHandler{}
 }
 
-func (h *Handler) RegisterRoutes(app *fiber.App) {
+func (h *DashboardHandler) RegisterRoutes(app *fiber.App) {
 	guard := middleware.AuthenticatedLayout()
 
 	app.Get("/dashboard", guard, h.Dashboard)
 	app.Get("/oylama", guard, h.page("Oylama"))
 }
 
-func (h *Handler) Dashboard(c fiber.Ctx) error {
+func (h *DashboardHandler) Dashboard(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
 	return htmx.Render(c, views.Dashboard(u, c.Path(), csrf.Token(c)))
@@ -34,7 +34,7 @@ func (h *Handler) Dashboard(c fiber.Ctx) error {
 
 // page returns a handler for one of the not-yet-built sidebar pages: title
 // becomes both the <title> and the active breadcrumb.
-func (h *Handler) page(title string) fiber.Handler {
+func (h *DashboardHandler) page(title string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		u, _ := session.GetCurrentUser(c)
 

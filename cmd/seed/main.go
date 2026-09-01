@@ -2,7 +2,7 @@
 // a one-off dev/ops tool, not something the running server ever calls.
 // The venue feature (repository/service/handler) isn't built yet, so this
 // writes the venue document directly rather than through an abstraction
-// that doesn't exist; user documents go through the real user.Repository
+// that doesn't exist; user documents go through the real user.UserRepository
 // since that one already fits.
 package main
 
@@ -103,7 +103,7 @@ func createVenue(ctx context.Context, client *db.Client) (bson.ObjectID, error) 
 		UpdatedAt: now,
 	}
 
-	result, err := client.Database().Collection(venue.CollectionName).InsertOne(ctx, v)
+	result, err := client.Database().Collection(venue.VenueCollectionName).InsertOne(ctx, v)
 	if err != nil {
 		return bson.ObjectID{}, err
 	}
@@ -113,7 +113,7 @@ func createVenue(ctx context.Context, client *db.Client) (bson.ObjectID, error) 
 
 // attachBoss sets venueID on the account identified by bossEmail, creating
 // it as a boss first if it doesn't exist yet.
-func attachBoss(ctx context.Context, repo user.Repository, venueID bson.ObjectID) error {
+func attachBoss(ctx context.Context, repo user.UserRepository, venueID bson.ObjectID) error {
 	existing, err := repo.FindByEmail(ctx, bossEmail)
 	if errors.Is(err, user.ErrUserNotFound) {
 		// CreateAdmin just inserts whatever User it's given — despite the
