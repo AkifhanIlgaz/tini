@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/mail"
 
+	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -17,11 +18,17 @@ type InviteAdminRequest struct {
 }
 
 func (r InviteAdminRequest) Validate() error {
+	errs := htmx.FieldErrors{}
+
 	if _, err := mail.ParseAddress(r.Email); err != nil {
-		return errors.New("user: email is invalid")
+		errs["email"] = ErrEmailInvalid
 	}
 
-	return nil
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errs
 }
 
 // ToUser maps an InviteAdminRequest into the domain User the repository

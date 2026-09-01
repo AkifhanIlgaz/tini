@@ -1,6 +1,6 @@
 package playlist
 
-import "errors"
+import "github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 
 // AddLinkRequest is Handler.Add's input — a single YouTube link submitted
 // through the top-of-page form.
@@ -9,9 +9,15 @@ type AddLinkRequest struct {
 }
 
 func (r AddLinkRequest) Validate() error {
+	errs := htmx.FieldErrors{}
+
 	if r.URL == "" {
-		return errors.New("playlist: url is required")
+		errs["url"] = ErrURLRequired
 	}
 
-	return nil
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errs
 }

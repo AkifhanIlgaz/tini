@@ -61,14 +61,11 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 
 func (h *Handler) Foo(c fiber.Ctx) error {
 	// ...
-	return render(c, views.Foo(...))
-}
-
-func render(c fiber.Ctx, component templ.Component) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return component.Render(c.Context(), c.Response().BodyWriter())
+	return htmx.Render(c, views.Foo(...))
 }
 ```
+
+`render` her feature'da tekrarlanan bir yardımcı değil — `internal/shared/htmx.Render` üzerinden tek yerden geliyor.
 
 Sonra `cmd/server/main.go`'da handler'ı kurup `RegisterRoutes(app)`'i
 çağırın — diğer feature'ların yanına, alfabetik sırayı bozmadan ekleyin.
@@ -216,6 +213,21 @@ repo'da ayrıca:
   boosted/plain request ayrımını ve `HX-Trigger` gibi header çakışmalarını
   merkezi olarak çözer — yeni bir HX-* header ihtiyacı çıkarsa buraya
   eklenir, handler'lara header yazımı serpiştirilmez.
+- **Handler'lar hata toast'ını kendisi tetiklemez** — kullanıcıya gösterilecek
+  beklenen bir hata (geçersiz form girdisi, çakışan kayıt vb.) için
+  `return htmx.NewToastError("Başlık", "Açıklama")` dönülür; asıl
+  `htmx.Toast(...)` çağrısı tek bir yerde, `cmd/server/main.go`'da
+  `fiber.Config{ErrorHandler: htmx.HandleError}` olarak kurulu olan merkezi
+  hata handler'ındadır (bkz. `internal/shared/htmx/error.go`). Beklenmeyen
+  diğer hatalar her zamanki gibi `fmt.Errorf("...: %w", err)` ile sarılıp
+  döner — `HandleError` bunları `slog.Error` ile loglar, sonra htmx isteğiyse
+  genel bir hata toast'ına, değilse `fiber.DefaultErrorHandler`'a düşürür.
+  Loglama `slogfiber` middleware'ine bırakılmaz: middleware kendi log
+  satırını `HandleError`'ın *dönüş değerine* göre üretir, `HandleError`
+  hatayı bir response'a çevirdiği an orijinal `%w` zinciri kaybolur — bu
+  yüzden `HandleError`, `cmd/server/main.go`'daki `slog.Error(...); os.Exit(1)`
+  ile aynı gerekçeyle (üstünde sarıp döneceği bir katman kalmadığı için)
+  hatayı kendisi loglar.
 - **Servis katmanı metodları tek bir `req <Fiil><İsim>Request` parametresi
   alır**: `func (s *Service) Foo(ctx context.Context, req FooRequest) (...)`
   — birden fazla gevşek parametre (`venueID, email string` gibi) yerine her
@@ -234,3 +246,36 @@ repo'da ayrıca:
   yapmak oluyor). `Validate()` **handler katmanında**, `c.Bind()`'den hemen
   sonra, servis çağrılmadan önce çağrılır — servis metodları kendilerine
   gelen `req`'in zaten valide edilmiş olduğunu varsayar.
+- **Form input'larındaki validasyon hataları `htmx.FieldErrors` ile alan
+  bazında gösterilir** — tek bir toast yerine, hangi alan geçersizse onun
+  altında `field.FieldError` component'i ile mesaj gösterilir (bkz.
+  `internal/features/venue` — `UpdateVenueRequest`/`views.settingsCard`).
+  Kalıp:
+  1. `Validate()`, geçersiz her form alanı için `internal/shared/htmx.FieldErrors`
+     (`map[string]error`, form alan adına göre keyed) doldurup döner —
+     `errs := htmx.FieldErrors{}`, boşsa `nil` dönülür (typed-nil tuzağına
+     düşmemek için `len(errs) == 0` kontrolüyle).
+  2. Map'e konan `error` değerleri harici bir kütüphaneden/sabit string'den
+     değil, **feature'ın kendi `<feature>_errors.go` dosyasındaki** sentinel
+     error'lardan gelir (ör. `venue.ErrNameRequired`,
+     `user.ErrEmailInvalid`). Bunların `Error()` metni **kullanıcıya
+     doğrudan gösterilir** — bu yüzden Türkçe yazılır, dosyanın başındaki
+     `ErrVenueNotFound` gibi diğer sentinel error'ların İngilizce/internal
+     üslubundan farklıdır (bir yorumla ayrımı belirtin). Bir servis
+     hatasının (ör. `ErrUserAlreadyExists`) alan hatasına çevrilmesi
+     gerekiyorsa, o da aynı dosyada ayrı bir "display" error olarak
+     tanımlanır — kontrol akışında kullanılan İngilizce sentinel'in metni
+     kullanıcıya gösterilmez.
+  3. Handler, `Validate()`'in döndüğü hatayı `errors.As(err, &fieldErrs)`
+     ile `htmx.FieldErrors`'a çevirip formu yeniden render eder — genel
+     hata yolunun tersine (`fmt.Errorf("...: %w", err)`), burada `htmx.Render`
+     çağrılır, servis katmanına geçilmez.
+  4. View tarafında ilgili `templ.Attributes{"id": "..."}`'lı form/card,
+     handler'daki başarı yolunda da kullanılan sabit bir ID taşır; buton
+     `hx-target`/`hx-select` bu ID'yi hedefler, `hx-swap="outerHTML"` ve
+     `hx-push-url="false"` (dashboard layout'un boosted wrapper'ından miras
+     alınan `hx-push-url="true"`'yu ezmek için — bkz. `views.settingsCard`
+     yorumu). `fieldErrs map[string]error` parametresi ilgili
+     `textfield.Props{IsInvalid: fieldErrs["<ad>"] != nil}`'a ve alanın
+     altına `if err := fieldErrs["<ad>"]; err != nil { @field.FieldError() { { err.Error() } } }`
+     şeklinde bağlanır.

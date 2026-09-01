@@ -11,7 +11,6 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
 	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/AkifhanIlgaz/tini/internal/shared/middleware"
-	"github.com/a-h/templ"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gorilla/sessions"
@@ -64,7 +63,7 @@ func (h *AuthHandler) RegisterRoutes(app *fiber.App) {
 }
 
 func (h *AuthHandler) LoginPage(c fiber.Ctx) error {
-	return render(c, views.Login(csrf.Token(c)))
+	return htmx.Render(c, views.Login(csrf.Token(c)))
 }
 
 // Login and Callback take the provider from Fiber's :provider route param
@@ -139,9 +138,4 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	}
 
 	return htmx.Redirect(c, "/login")
-}
-
-func render(c fiber.Ctx, component templ.Component) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return component.Render(c.Context(), c.Response().BodyWriter())
 }

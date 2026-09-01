@@ -9,7 +9,6 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
 	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/AkifhanIlgaz/tini/internal/shared/middleware"
-	"github.com/a-h/templ"
 	"github.com/gofiber/fiber/v3"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -38,12 +37,13 @@ func (h *Handler) Users(c fiber.Ctx) error {
 		return fmt.Errorf("user: users page: %w", err)
 	}
 
-	return render(c, views.Users(u, c.Path(), csrf.Token(c), toUserRows(users)))
+	return htmx.Render(c, views.Users(u, c.Path(), csrf.Token(c), toUserRows(users)))
 }
 
-// InviteAdmin pre-provisions an admin account by email — a bad email or
-// one already in use fails softly with a toast, not a 500, since both are
-// expected user-input mistakes rather than server errors.
+// InviteAdmin pre-provisions an admin account by email — a bad email or one
+// already in use fails softly by re-rendering the invite form with the
+// email field marked invalid, not a 500, since both are expected
+// user-input mistakes rather than server errors.
 func (h *Handler) InviteAdmin(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
@@ -54,18 +54,17 @@ func (h *Handler) InviteAdmin(c fiber.Ctx) error {
 	req.VenueID = u.VenueID
 
 	if err := req.Validate(); err != nil {
-		return htmx.Toast(c, htmx.ToastOptions{
-			Title:   "Geçersiz e-posta",
-			Variant: htmx.ToastDanger,
-		})
+		var fieldErrs htmx.FieldErrors
+		if errors.As(err, &fieldErrs) {
+			return htmx.Render(c, views.InviteAdminForm(req.Email, fieldErrs))
+		}
+
+		return fmt.Errorf("user: invite admin: validate: %w", err)
 	}
 
 	if _, err := h.service.InviteAdmin(c.Context(), req); err != nil {
 		if errors.Is(err, ErrUserAlreadyExists) {
-			return htmx.Toast(c, htmx.ToastOptions{
-				Title:   "Bu e-posta zaten kayıtlı",
-				Variant: htmx.ToastDanger,
-			})
+			return htmx.Render(c, views.InviteAdminForm(req.Email, htmx.FieldErrors{"email": ErrEmailAlreadyExists}))
 		}
 
 		return fmt.Errorf("user: invite admin: %w", err)
@@ -122,9 +121,4 @@ func roleLabel(r Role) string {
 	default:
 		return string(r)
 	}
-}
-
-func render(c fiber.Ctx, component templ.Component) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return component.Render(c.Context(), c.Response().BodyWriter())
 }

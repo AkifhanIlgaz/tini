@@ -14,7 +14,6 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
 	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/AkifhanIlgaz/tini/internal/shared/middleware"
-	"github.com/a-h/templ"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -59,11 +58,11 @@ func (h *Handler) List(c fiber.Ctx) error {
 		PageSizeOptions: pageSizeOptions,
 	}
 
-	return render(c, views.Playlist(u, c.Path(), csrf.Token(c), toRows(items[start:end]), pageInfo))
+	return htmx.Render(c, views.Playlist(u, c.Path(), csrf.Token(c), toRows(items[start:end]), pageInfo))
 }
 
-// Add only demonstrates the toast/redirect round-trip for now — nothing is
-// actually persisted until playlist.Repository exists.
+// Add only demonstrates the field-error/redirect round-trip for now —
+// nothing is actually persisted until playlist.Repository exists.
 func (h *Handler) Add(c fiber.Ctx) error {
 	var req AddLinkRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -71,10 +70,12 @@ func (h *Handler) Add(c fiber.Ctx) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		return htmx.Toast(c, htmx.ToastOptions{
-			Title:   "Geçersiz link",
-			Variant: htmx.ToastDanger,
-		})
+		var fieldErrs htmx.FieldErrors
+		if errors.As(err, &fieldErrs) {
+			return htmx.Render(c, views.AddLinkForm(req.URL, fieldErrs))
+		}
+
+		return fmt.Errorf("playlist: add: validate: %w", err)
 	}
 
 	return htmx.Redirect(c, "/playlist")
@@ -135,9 +136,4 @@ func toRows(items []mockItem) []views.PlaylistRow {
 	}
 
 	return rows
-}
-
-func render(c fiber.Ctx, component templ.Component) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return component.Render(c.Context(), c.Response().BodyWriter())
 }

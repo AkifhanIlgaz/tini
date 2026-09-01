@@ -31,7 +31,10 @@ type SettingsForm struct {
 	CandidateCooldownMin      int
 }
 
-templ Info(u session.User, path string, csrfToken string, general GeneralForm, settings SettingsForm) {
+// fieldErrs is UpdateVenueRequest's per-field validation messages, keyed by
+// form field name — nil on every path but a failed save (see
+// venue_handler.go's Save).
+templ Info(u session.User, path string, csrfToken string, general GeneralForm, settings SettingsForm, fieldErrs map[string]error) {
 	@layout.Dashboard(layout.DashboardProps{
 		Title:       "Mekan bilgileri",
 		CSRFToken:   csrfToken,
@@ -43,7 +46,7 @@ templ Info(u session.User, path string, csrfToken string, general GeneralForm, s
 	}) {
 		<div class="grid gap-4 lg:grid-cols-2 lg:items-start">
 			@qrCard()
-			@settingsCard(general, settings)
+			@settingsCard(general, settings, fieldErrs)
 		</div>
 	}
 }
@@ -70,8 +73,19 @@ templ qrCard() {
 	}
 }
 
-templ settingsCard(general GeneralForm, settings SettingsForm) {
-	@card.Card(card.Props{}) {
+// settingsCardID is the target settingsCard's Kaydet button swaps into —
+// the handler re-renders the full Info page on save (it needs venue.Venue's
+// fresh values anyway), and hx-select/hx-target pick this card back out of
+// that response so only it gets replaced.
+const settingsCardID = "venue-settings-card"
+
+// settingsCard's Kaydet button sets hx-push-url="false" to override the
+// hx-push-url="true" it would otherwise inherit from the dashboard layout's
+// boosted wrapper (see layout.Dashboard) — without it, htmx pushes
+// /venue/save into the address bar even though the swap is scoped to this
+// card, and a refresh then 404s (no GET /venue/save route).
+templ settingsCard(general GeneralForm, settings SettingsForm, fieldErrs map[string]error) {
+	@card.Card(card.Props{Attrs: templ.Attributes{"id": settingsCardID}}) {
 		@card.Header() {
 			@card.Title() {
 				Mekan bilgileri
@@ -82,17 +96,28 @@ templ settingsCard(general GeneralForm, settings SettingsForm) {
 		}
 		@card.Content() {
 			@form.Form(form.Props{}, "flex flex-col gap-4") {
-				@textfield.TextField(textfield.Props{Name: "name", Type: "text", Value: general.Name, IsRequired: true}) {
+				@textfield.TextField(textfield.Props{Name: "name", Type: "text", Value: general.Name, IsRequired: true, IsInvalid: fieldErrs["name"] != nil}) {
 					@field.Label(field.LabelProps{}) {
 						Mekan adı
 					}
 					@textfield.Input(textfield.InputProps{Placeholder: "Mekanının adını gir"})
+					if err := fieldErrs["name"]; err != nil {
+						@field.FieldError() {
+							{ err.Error() }
+						}
+					}
 				}
-				@settingsField("roundIntervalMin", "Tur aralığı (dk)", settings.RoundIntervalMin, "Her oylama turu bu kadar dakikada bir başlar.")
-				@settingsField("candidateCount", "Aday sayısı", settings.CandidateCount, "Her turda kaç şarkı aday olarak gösterilir.")
-				@settingsField("recentlyPlayedCooldownMin", "Son çalınanlar bekleme süresi (dk)", settings.RecentlyPlayedCooldownMin, "Bir şarkının tekrar aday/fallback olabilmesi için son çalınışından bu kadar dakika geçmesi gerekir.")
-				@settingsField("candidateCooldownMin", "Aday bekleme süresi (dk)", settings.CandidateCooldownMin, "Bir şarkının turda tekrar aday olabilmesi için son aday olduğu andan bu kadar dakika geçmesi gerekir.")
-				@button.Button(button.Props{Attrs: templ.Attributes{"hx-post": "/venue/save", "hx-swap": "none"}}, "self-start") {
+				@settingsField("roundIntervalMin", "Tur aralığı (dk)", settings.RoundIntervalMin, "Her oylama turu bu kadar dakikada bir başlar.", fieldErrs)
+				@settingsField("candidateCount", "Aday sayısı", settings.CandidateCount, "Her turda kaç şarkı aday olarak gösterilir.", fieldErrs)
+				@settingsField("recentlyPlayedCooldownMin", "Son çalınanlar bekleme süresi (dk)", settings.RecentlyPlayedCooldownMin, "Bir şarkının tekrar aday/fallback olabilmesi için son çalınışından bu kadar dakika geçmesi gerekir.", fieldErrs)
+				@settingsField("candidateCooldownMin", "Aday bekleme süresi (dk)", settings.CandidateCooldownMin, "Bir şarkının turda tekrar aday olabilmesi için son aday olduğu andan bu kadar dakika geçmesi gerekir.", fieldErrs)
+				@button.Button(button.Props{Attrs: templ.Attributes{
+					"hx-post":     "/venue/save",
+					"hx-target":   "#" + settingsCardID,
+					"hx-select":   "#" + settingsCardID,
+					"hx-swap":     "outerHTML",
+					"hx-push-url": "false",
+				}}, "self-start") {
 					Kaydet
 				}
 			}
@@ -103,14 +128,20 @@ templ settingsCard(general GeneralForm, settings SettingsForm) {
 // settingsField renders one number input pre-filled with value — htmx
 // serializes it from the closest <form> when the Kaydet button (a plain
 // hx-post, not a native submit — see button.Button's doc comment) fires.
-templ settingsField(name string, label string, value int, description string) {
-	@textfield.TextField(textfield.Props{Name: name, Type: "number", Value: strconv.Itoa(value), IsRequired: true}) {
+templ settingsField(name string, label string, value int, description string, fieldErrs map[string]error) {
+	@textfield.TextField(textfield.Props{Name: name, Type: "number", Value: strconv.Itoa(value), IsRequired: true, IsInvalid: fieldErrs[name] != nil}) {
 		@field.Label(field.LabelProps{}) {
 			{ label }
 		}
 		@textfield.Input(textfield.InputProps{Attrs: templ.Attributes{"min": "0"}})
-		@field.Description() {
-			{ description }
+		if err := fieldErrs[name]; err != nil {
+			@field.FieldError() {
+				{ err.Error() }
+			}
+		} else {
+			@field.Description() {
+				{ description }
+			}
 		}
 	}
 }

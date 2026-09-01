@@ -7,9 +7,9 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/features/dashboard/views"
 	"github.com/AkifhanIlgaz/tini/internal/platform/csrf"
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/AkifhanIlgaz/tini/internal/shared/layout"
 	"github.com/AkifhanIlgaz/tini/internal/shared/middleware"
-	"github.com/a-h/templ"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -29,7 +29,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 func (h *Handler) Dashboard(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
-	return render(c, views.Dashboard(u, c.Path(), csrf.Token(c)))
+	return htmx.Render(c, views.Dashboard(u, c.Path(), csrf.Token(c)))
 }
 
 // page returns a handler for one of the not-yet-built sidebar pages: title
@@ -40,11 +40,6 @@ func (h *Handler) page(title string) fiber.Handler {
 
 		trail := []layout.Crumb{{Label: "Anasayfa", Href: "/dashboard"}, {Label: title}}
 
-		return render(c, views.Placeholder(u, c.Path(), csrf.Token(c), title, trail))
+		return htmx.Render(c, views.Placeholder(u, c.Path(), csrf.Token(c), title, trail))
 	}
-}
-
-func render(c fiber.Ctx, component templ.Component) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return component.Render(c.Context(), c.Response().BodyWriter())
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/platform/logging"
 	db "github.com/AkifhanIlgaz/tini/internal/platform/mongo"
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	slogfiber "github.com/samber/slog-fiber"
@@ -55,12 +56,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	venueRepo, err := venue.NewRepository(mongoClient)
+	if err != nil {
+		slog.Error("venue.NewRepository", "error", err)
+		os.Exit(1)
+	}
+
 	authHandler := auth.NewAuthHandler(usersRepo)
 	authHandler.RegisterProviders(cfg)
 
 	sessionStore := session.NewStore(cfg)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{ErrorHandler: htmx.HandleError})
 	app.Use(slogfiber.New(logger))
 	app.Use(session.New(sessionStore))
 	app.Use(csrf.New(cfg, sessionStore))
@@ -71,12 +78,13 @@ func main() {
 	})
 
 	userService := user.NewService(usersRepo)
+	venueService := venue.NewService(venueRepo)
 
 	authHandler.RegisterRoutes(app)
 	dashboard.NewHandler().RegisterRoutes(app)
 	playlist.NewHandler().RegisterRoutes(app)
 	user.NewHandler(userService).RegisterRoutes(app)
-	venue.NewHandler().RegisterRoutes(app)
+	venue.NewHandler(venueService).RegisterRoutes(app)
 
 	go func() {
 		slog.Info("server listening", "port", cfg.Server.Port, "env", cfg.Env)

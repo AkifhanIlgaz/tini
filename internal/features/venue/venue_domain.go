@@ -1,6 +1,8 @@
-// Package venue is the venue domain type — the feature itself (repository,
-// service, handler) isn't built out yet; this only exists so the "venues"
-// collection has a defined shape for cmd/seed to write against.
+// Package venue is the venue feature: the "Mekan bilgileri" page (QR kod +
+// ayarlar formu) over a Mongo-backed repository. There's no way to create a
+// venue through the app yet — cmd/seed writes the initial document directly
+// — so Repository only supports reading and updating one that already
+// exists.
 package venue
 
 import (

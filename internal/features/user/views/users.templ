@@ -76,22 +76,52 @@ templ Users(u session.User, path string, csrfToken string, rows []UserRow) {
 	}
 }
 
-// inviteAdminForm POSTs to /users on the button click (not a native
-// submit — button.Button always renders type="button", see its doc
-// comment) with hx-swap="none": htmx still serializes the closest <form>'s
-// fields for a non-form-element trigger, so the email input's value goes
-// along. Success responds with HX-Redirect (back to this same page, see
-// Handler.InviteAdmin); a validation/duplicate-email failure responds
-// with a toast instead, leaving the form filled in.
+// inviteAdminFormID is the target inviteAdminForm's Admin Ekle button swaps
+// into on a validation/duplicate-email failure — see InviteAdminForm's doc
+// comment.
+const inviteAdminFormID = "invite-admin-form"
+
 templ inviteAdminForm() {
-	@form.Form(form.Props{}, "flex flex-col items-stretch gap-2 sm:flex-row sm:items-end") {
-		@textfield.TextField(textfield.Props{Name: "email", Type: "email", IsRequired: true}, "w-full sm:min-w-64") {
+	@InviteAdminForm("", nil)
+}
+
+// InviteAdminForm POSTs to /users on the button click (not a native
+// submit — button.Button always renders type="button", see its doc
+// comment). htmx still serializes the closest <form>'s fields for a
+// non-form-element trigger, so the email input's value goes along. Success
+// responds with HX-Redirect (back to this same page, see
+// Handler.InviteAdmin) regardless of the swap below. A
+// validation/duplicate-email failure re-renders this form via
+// hx-select/hx-target scoped to inviteAdminFormID, so the email field
+// shows its field.FieldError inline instead of a toast — fieldErrs is nil
+// on every path but that one. hx-push-url="false" overrides the
+// hx-push-url="true" this form would otherwise inherit from the dashboard
+// layout's boosted wrapper (see views.settingsCard's identical comment in
+// the venue feature). The row aligns items-start (not items-end) with the
+// button offset sm:mt-6 (label's line-height + the textfield's gap-1) to
+// line the button up with the input on its own — items-end would instead
+// track the field's bottom edge, which moves down once field.FieldError
+// adds height under the input.
+templ InviteAdminForm(email string, fieldErrs map[string]error) {
+	@form.Form(form.Props{Attrs: templ.Attributes{"id": inviteAdminFormID}}, "flex flex-col items-stretch gap-2 sm:flex-row sm:items-start") {
+		@textfield.TextField(textfield.Props{Name: "email", Type: "email", Value: email, IsRequired: true, IsInvalid: fieldErrs["email"] != nil}, "w-full sm:min-w-64") {
 			@field.Label(field.LabelProps{}) {
 				E-posta
 			}
 			@textfield.Input(textfield.InputProps{Placeholder: "Eklemek istediğin e-postayı gir"})
+			if err := fieldErrs["email"]; err != nil {
+				@field.FieldError() {
+					{ err.Error() }
+				}
+			}
 		}
-		@button.Button(button.Props{Attrs: templ.Attributes{"hx-post": "/users", "hx-swap": "none"}}) {
+		@button.Button(button.Props{Attrs: templ.Attributes{
+			"hx-post":     "/users",
+			"hx-target":   "#" + inviteAdminFormID,
+			"hx-select":   "#" + inviteAdminFormID,
+			"hx-swap":     "outerHTML",
+			"hx-push-url": "false",
+		}}, "sm:mt-6") {
 			Admin Ekle
 		}
 	}

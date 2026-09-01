@@ -80,22 +80,50 @@ templ Playlist(u session.User, path string, csrfToken string, rows []PlaylistRow
 	}
 }
 
-// addLinkForm POSTs to /playlist on the button click (not a native submit
-// — button.Button always renders type="button", see its doc comment) with
-// hx-swap="none": htmx still serializes the closest <form>'s fields for a
-// non-form-element trigger, so the url input's value goes along. Success
-// responds with HX-Redirect (back to this same page, see Handler.Add); an
-// empty-link failure responds with a toast instead, leaving the form
-// filled in.
+// addLinkFormID is the target addLinkForm's Ekle button swaps into on a
+// validation failure — see AddLinkForm's doc comment.
+const addLinkFormID = "playlist-add-link-form"
+
 templ addLinkForm() {
-	@form.Form(form.Props{}, "flex flex-col items-stretch gap-2 sm:flex-row sm:items-end") {
-		@textfield.TextField(textfield.Props{Name: "url", Type: "url", IsRequired: true}, "w-full sm:min-w-64") {
+	@AddLinkForm("", nil)
+}
+
+// AddLinkForm POSTs to /playlist on the button click (not a native submit
+// — button.Button always renders type="button", see its doc comment). htmx
+// still serializes the closest <form>'s fields for a non-form-element
+// trigger, so the url input's value goes along. Success responds with
+// HX-Redirect (back to this same page, see Handler.Add) regardless of the
+// swap below. A validation failure re-renders this form via
+// hx-select/hx-target scoped to addLinkFormID, so the failing url field
+// shows its field.FieldError inline instead of a generic toast — fieldErrs
+// is nil on every path but that one. hx-push-url="false" overrides the
+// hx-push-url="true" this form would otherwise inherit from the dashboard
+// layout's boosted wrapper (see views.settingsCard's identical comment in
+// the venue feature). The row aligns items-start (not items-end) with the
+// button offset sm:mt-6 (label's line-height + the textfield's gap-1) to
+// line the button up with the input on its own — items-end would instead
+// track the field's bottom edge, which moves down once field.FieldError
+// adds height under the input.
+templ AddLinkForm(url string, fieldErrs map[string]error) {
+	@form.Form(form.Props{Attrs: templ.Attributes{"id": addLinkFormID}}, "flex flex-col items-stretch gap-2 sm:flex-row sm:items-start") {
+		@textfield.TextField(textfield.Props{Name: "url", Type: "url", Value: url, IsRequired: true, IsInvalid: fieldErrs["url"] != nil}, "w-full sm:min-w-64") {
 			@field.Label(field.LabelProps{}) {
 				Link
 			}
 			@textfield.Input(textfield.InputProps{Placeholder: "YouTube linkini yapıştır"})
+			if err := fieldErrs["url"]; err != nil {
+				@field.FieldError() {
+					{ err.Error() }
+				}
+			}
 		}
-		@button.Button(button.Props{Attrs: templ.Attributes{"hx-post": "/playlist", "hx-swap": "none"}}) {
+		@button.Button(button.Props{Attrs: templ.Attributes{
+			"hx-post":     "/playlist",
+			"hx-target":   "#" + addLinkFormID,
+			"hx-select":   "#" + addLinkFormID,
+			"hx-swap":     "outerHTML",
+			"hx-push-url": "false",
+		}}, "sm:mt-6") {
 			Ekle
 		}
 	}
