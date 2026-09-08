@@ -15,6 +15,7 @@ type PlaylistItem struct {
 	YoutubeID string        `bson:"youtube_id" json:"youtubeId"`
 	Title     string        `bson:"title" json:"title"`
 	Channel   string        `bson:"channel" json:"channel"`
+	Thumbnail string        `bson:"thumbnail" json:"thumbnail"`
 	VenueID   bson.ObjectID `bson:"venue_id" json:"-"`
 	CreatedAt time.Time     `bson:"created_at" json:"createdAt"`
 	AddedBy   bson.ObjectID `bson:"added_by" json:"addedBy"`

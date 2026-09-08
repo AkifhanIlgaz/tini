@@ -19,6 +19,7 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/platform/logging"
 	db "github.com/AkifhanIlgaz/tini/internal/platform/mongo"
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/platform/youtube"
 	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
@@ -62,6 +63,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	playlistRepo, err := playlist.NewRepository(mongoClient)
+	if err != nil {
+		slog.Error("playlist.NewRepository", "error", err)
+		os.Exit(1)
+	}
+
 	authHandler := auth.NewAuthHandler(usersRepo)
 	authHandler.RegisterProviders(cfg)
 
@@ -79,10 +86,12 @@ func main() {
 
 	userService := user.NewService(usersRepo)
 	venueService := venue.NewService(venueRepo)
+	youtubeClient := youtube.NewClient(cfg.Youtube.APIKey)
+	playlistService := playlist.NewService(playlistRepo, usersRepo, youtubeClient)
 
 	authHandler.RegisterRoutes(app)
 	dashboard.NewHandler().RegisterRoutes(app)
-	playlist.NewHandler().RegisterRoutes(app)
+	playlist.NewHandler(playlistService).RegisterRoutes(app)
 	user.NewHandler(userService).RegisterRoutes(app)
 	venue.NewHandler(venueService).RegisterRoutes(app)
 

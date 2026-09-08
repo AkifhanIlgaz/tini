@@ -71,6 +71,7 @@ func (c *Client) ExtractTrackInfo(videoID string) (*TrackInfo, error) {
 	if err := dec.Decode(&info); err != nil {
 		return nil, ErrRequestFailed
 	}
+	info.ID = videoID
 
 	return &info, nil
 }
@@ -102,6 +103,14 @@ type playlistItemsResponse struct {
 			ResourceId             struct {
 				VideoId string `json:"videoId"`
 			} `json:"resourceId"`
+			Thumbnails struct {
+				Medium struct {
+					URL string `json:"url"`
+				} `json:"medium"`
+				Default struct {
+					URL string `json:"url"`
+				} `json:"default"`
+			} `json:"thumbnails"`
 		} `json:"snippet"`
 	} `json:"items"`
 	NextPageToken string `json:"nextPageToken"`
@@ -174,10 +183,16 @@ func (c *Client) FetchPlaylistItems(playlistID string) ([]TrackInfo, error) {
 				channel = item.Snippet.ChannelTitle
 			}
 
+			thumbnail := item.Snippet.Thumbnails.Medium.URL
+			if thumbnail == "" {
+				thumbnail = item.Snippet.Thumbnails.Default.URL
+			}
+
 			tracks = append(tracks, TrackInfo{
-				ID:      videoID,
-				Title:   item.Snippet.Title,
-				Channel: channel,
+				ID:        videoID,
+				Title:     item.Snippet.Title,
+				Channel:   channel,
+				Thumbnail: thumbnail,
 			})
 		}
 

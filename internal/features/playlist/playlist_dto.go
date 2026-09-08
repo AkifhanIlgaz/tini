@@ -8,10 +8,14 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// ListItemsRequest is PlaylistService.ListItems's input — VenueID comes from the
-// session, never from a submitted form.
+// ListItemsRequest is PlaylistService.ListItems's input — VenueID comes from
+// the session, never from a submitted form. Page/PageSize are 1-indexed and
+// assumed already normalized (see PlaylistHandler.List's parsePage/
+// parsePageSize).
 type ListItemsRequest struct {
-	VenueID bson.ObjectID `form:"-"`
+	VenueID  bson.ObjectID `form:"-"`
+	Page     int           `form:"-"`
+	PageSize int           `form:"-"`
 }
 
 func (r ListItemsRequest) Validate() error {
@@ -22,13 +26,24 @@ func (r ListItemsRequest) Validate() error {
 	return nil
 }
 
+// Skip is this page's Mongo offset (options.Find().SetSkip's input).
+func (r ListItemsRequest) Skip() int64 {
+	return int64((r.Page - 1) * r.PageSize)
+}
+
 // AddLinkRequest is PlaylistHandler.Add's input — a single YouTube link submitted
 // through the top-of-page form.
 type AddLinkRequest struct {
-	VenueID    bson.ObjectID `form:"-"`
-	URL        string        `form:"url"`
-	VideoID    string        `form:"-"`
-	PlaylistID string        `form:"-"`
+	VenueID bson.ObjectID `form:"-"`
+	AddedBy bson.ObjectID `form:"-"`
+	URL     string        `form:"url"`
+	// AsPlaylist is the "Playlist olarak ekle" checkbox — only consulted
+	// when URL points at both a video and a playlist (ör.
+	// "?v=...&list=..."); otherwise URL alone decides. Left unchecked, an
+	// ambiguous link adds the single video.
+	AsPlaylist bool   `form:"asPlaylist"`
+	VideoID    string `form:"-"`
+	PlaylistID string `form:"-"`
 }
 
 func (r *AddLinkRequest) Validate() error {
@@ -36,25 +51,32 @@ func (r *AddLinkRequest) Validate() error {
 		return errors.New("playlist: venue id is required")
 	}
 
-	errs := htmx.FieldErrors{}
-
 	if r.URL == "" {
-		errs["url"] = ErrURLRequired
+		return htmx.FieldErrors{"url": ErrURLRequired}
 	}
 
 	parsed, err := youtube.ParseURL(r.URL)
 	if err != nil {
-		errs["url"] = err
+		return htmx.FieldErrors{"url": err}
 	}
 
-	if len(errs) == 0 {
-		r.VideoID = parsed.VideoID
+	switch {
+	case parsed.VideoID != "" && parsed.PlaylistID != "" && r.AsPlaylist:
 		r.PlaylistID = parsed.PlaylistID
-
-		return nil
+	case parsed.VideoID != "":
+		r.VideoID = parsed.VideoID
+	default:
+		r.PlaylistID = parsed.PlaylistID
 	}
 
-	return errs
+	return nil
+}
+
+// IsPlaylist reports whether Validate resolved this request to a playlist
+// import (PlaylistService.ImportPlaylist) rather than a single-video add
+// (PlaylistService.AddItem).
+func (r AddLinkRequest) IsPlaylist() bool {
+	return r.PlaylistID != ""
 }
 
 // DeleteItemRequest is PlaylistHandler.Delete's input — ID comes from the route

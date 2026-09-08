@@ -19,6 +19,7 @@ type UserRepository interface {
 	ListUsersByVenue(ctx context.Context, venueID bson.ObjectID) ([]User, error)
 	DeleteAdmin(ctx context.Context, venueID, adminID bson.ObjectID) error
 	FindByID(ctx context.Context, id bson.ObjectID) (User, error)
+	FindByIDs(ctx context.Context, ids []bson.ObjectID) ([]User, error)
 	FindByEmail(ctx context.Context, email string) (User, error)
 	Upsert(ctx context.Context, email, name, avatarURL string) (User, error)
 	SetVenueID(ctx context.Context, userID, venueID bson.ObjectID) error
@@ -165,6 +166,28 @@ func (r *userMongoRepository) FindByID(ctx context.Context, id bson.ObjectID) (U
 	}
 
 	return u, nil
+}
+
+// FindByIDs returns every user in ids — silently skipping ids that don't
+// exist (a deleted user) rather than erroring, since callers use this for
+// display-only enrichment (ör. playlist.PlaylistService.ListItems resolving
+// PlaylistItem.AddedBy to a name).
+func (r *userMongoRepository) FindByIDs(ctx context.Context, ids []bson.ObjectID) ([]User, error) {
+	filter := bson.M{
+		"_id": bson.M{"$in": ids},
+	}
+
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("user: find by ids: %w", err)
+	}
+
+	var users []User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, fmt.Errorf("user: find by ids: %w", err)
+	}
+
+	return users, nil
 }
 
 func (r *userMongoRepository) FindByEmail(ctx context.Context, email string) (User, error) {

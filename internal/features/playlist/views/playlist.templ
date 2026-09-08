@@ -8,6 +8,7 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/alertdialog"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/button"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/card"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/checkbox"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/field"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/form"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/pagination"
@@ -21,9 +22,13 @@ import (
 // any future playlist domain type for the same reason user's UserRow is
 // (see its doc comment).
 type PlaylistRow struct {
-	ID    string
-	Title string
-	URL   string
+	ID        string
+	Title     string
+	Channel   string
+	Thumbnail string
+	URL       string
+	AddedBy   string
+	CreatedAt string
 }
 
 // PageInfo carries the current page/size and enough context to render the
@@ -65,8 +70,11 @@ templ Playlist(u session.User, path string, csrfToken string, rows []PlaylistRow
 				@table.Column() {
 					Şarkı
 				}
-				@table.Column() {
-					Link
+				@table.Column("whitespace-nowrap") {
+					Ekleyen
+				}
+				@table.Column("whitespace-nowrap") {
+					Eklenme tarihi
 				}
 				@table.Column()
 			}
@@ -88,22 +96,31 @@ templ addLinkForm() {
 	@AddLinkForm("", nil)
 }
 
+// asPlaylistCheckboxName must match playlist.AddLinkRequest's `asPlaylist`
+// form tag exactly — duplicated here rather than imported to avoid a
+// views<->playlist import cycle.
+const asPlaylistCheckboxName = "asPlaylist"
+
 // AddLinkForm POSTs to /playlist on the button click (not a native submit
 // — button.Button always renders type="button", see its doc comment). htmx
 // still serializes the closest <form>'s fields for a non-form-element
-// trigger, so the url input's value goes along. Success responds with
-// HX-Redirect (back to this same page, see Handler.Add) regardless of the
-// swap below. A validation failure re-renders this form via
-// hx-select/hx-target scoped to addLinkFormID, so the failing url field
-// shows its field.FieldError inline instead of a generic toast — fieldErrs
-// is nil on every path but that one. hx-push-url="false" overrides the
-// hx-push-url="true" this form would otherwise inherit from the dashboard
-// layout's boosted wrapper (see views.settingsCard's identical comment in
-// the venue feature). The row aligns items-start (not items-end) with the
-// button offset sm:mt-6 (label's line-height + the textfield's gap-1) to
-// line the button up with the input on its own — items-end would instead
-// track the field's bottom edge, which moves down once field.FieldError
-// adds height under the input.
+// trigger, so the url input's value and the checkbox below go along.
+// Success responds with HX-Redirect (back to this same page, see
+// Handler.Add) regardless of the swap below. A validation failure
+// re-renders this form via hx-select/hx-target scoped to addLinkFormID, so
+// the failing url field shows its field.FieldError inline instead of a
+// generic toast — fieldErrs is nil on every path but that one.
+// hx-push-url="false" overrides the hx-push-url="true" this form would
+// otherwise inherit from the dashboard layout's boosted wrapper (see
+// views.settingsCard's identical comment in the venue feature). The row
+// aligns items-start (not items-end) with the button offset sm:mt-6 (label's
+// line-height + the textfield's gap-1) to line the button up with the input
+// on its own — items-end would instead track the field's bottom edge, which
+// moves down once field.FieldError adds height under the input.
+//
+// The "Playlist olarak ekle" checkbox only matters when url points at both
+// a video and a playlist (ör. "?v=...&list=..."); left unchecked, such a
+// link adds just the single video (see AddLinkRequest.Validate).
 templ AddLinkForm(url string, fieldErrs map[string]error) {
 	@form.Form(form.Props{Attrs: templ.Attributes{"id": addLinkFormID}}, "flex flex-col items-stretch gap-2 sm:flex-row sm:items-start") {
 		@textfield.TextField(textfield.Props{Name: "url", Type: "url", Value: url, IsRequired: true, IsInvalid: fieldErrs["url"] != nil}, "w-full sm:min-w-64") {
@@ -116,6 +133,15 @@ templ AddLinkForm(url string, fieldErrs map[string]error) {
 					{ err.Error() }
 				}
 			}
+			@checkbox.Checkbox(checkbox.Props{Name: asPlaylistCheckboxName, Value: "true"}, "mt-1") {
+				@checkbox.Content() {
+					@checkbox.Control() {
+						@checkbox.Indicator()
+					}
+					Bu şarkının dahil olduğu oynatma listesindeki şarkıları ekle
+				}
+			}
+
 		}
 		@button.Button(button.Props{Attrs: templ.Attributes{
 			"hx-post":     "/playlist",
@@ -131,19 +157,43 @@ templ AddLinkForm(url string, fieldErrs map[string]error) {
 
 templ playlistRow(row PlaylistRow) {
 	@table.Row() {
-		@table.Cell("") {
-			<span class="font-medium text-foreground">{ row.Title }</span>
-		}
-		@table.Cell("") {
-			<a href={ templ.URL(row.URL) } target="_blank" rel="noreferrer" class="text-accent underline-offset-2 hover:underline">
-				{ row.URL }
+		@table.Cell("whitespace-nowrap") {
+			<a href={ templ.URL(row.URL) } target="_blank" rel="noreferrer" class="block">
+				@card.Card(card.Props{Variant: card.VariantTransparent}, "flex-row items-center gap-3 p-2") {
+					<img
+						class="h-9 w-16 shrink-0 rounded object-cover"
+						src={ row.Thumbnail }
+						alt={ row.Title }
+						onerror="this.style.visibility='hidden'"
+					/>
+					<div class="flex flex-col">
+						<span class="font-medium text-foreground">{ row.Title }</span>
+						<span class="text-sm text-muted/70">{ row.Channel }</span>
+					</div>
+				}
 			</a>
 		}
+		@table.Cell("whitespace-nowrap") {
+			{ row.AddedBy }
+		}
+		@table.Cell("whitespace-nowrap") {
+			{ row.CreatedAt }
+		}
 		@table.Cell() {
-			<div class="flex justify-end">
+			<div class="flex justify-end gap-2">
+				@addToQueueButton()
 				@deletePlaylistDialog(row)
 			</div>
 		}
+	}
+}
+
+// addToQueueButton is a placeholder — there's no queue feature yet, so this
+// doesn't do anything on click.
+templ addToQueueButton() {
+	@button.Button(button.Props{Variant: button.VariantSecondary, Size: button.SizeSm}) {
+		@icons.ListMusic()
+		Sıraya ekle
 	}
 }
 
@@ -188,11 +238,23 @@ templ deletePlaylistDialog(row PlaylistRow) {
 // internal/shared/layout.Dashboard) already sets hx-target/hx-select/
 // hx-swap/hx-push-url, and htmx elements inherit those from an ancestor
 // regardless of hx-boost, so no per-button repetition is needed here.
+//
+// The page-size picker lives inside Summary (left side) rather than as a
+// sibling of pagination.Pagination — .pagination is already `w-full` and
+// handles the flex-col-on-mobile/flex-row-justify-between-on-desktop split
+// between Summary and Content itself (see pagination.css); wrapping it in
+// another flex row of our own just fought that layout instead of using it.
 templ paginationBar(page PageInfo) {
-	<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+	<div class="mt-4">
 		@pagination.Pagination(pagination.Props{Size: pagination.SizeSm}) {
-			@pagination.Summary() {
-				{ summaryText(page) }
+			@pagination.Summary("flex-wrap gap-x-3") {
+				<span>{ summaryText(page) }</span>
+				<span class="flex items-center gap-2">
+					<span>Sayfa başına:</span>
+					for _, size := range page.PageSizeOptions {
+						@pageSizeLink(size, page.PageSize)
+					}
+				</span>
 			}
 			@pagination.Content() {
 				@pagination.Item() {
@@ -214,12 +276,6 @@ templ paginationBar(page PageInfo) {
 				}
 			}
 		}
-		<div class="flex items-center gap-2 text-sm text-muted">
-			<span>Sayfa başına:</span>
-			for _, size := range page.PageSizeOptions {
-				@pageSizeLink(size, page.PageSize)
-			}
-		</div>
 	</div>
 }
 

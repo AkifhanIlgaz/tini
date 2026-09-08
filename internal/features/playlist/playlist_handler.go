@@ -1,6 +1,5 @@
-// Package playlist is the playlist feature: an add-link form plus a
-// paginated table over an in-memory mock list — no real backend
-// (repository/service) yet.
+// Package playlist is the playlist feature: an add-link form (single video
+// or playlist import) plus a paginated table over a venue's playlist.
 package playlist
 
 import (
@@ -8,23 +7,28 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/AkifhanIlgaz/tini/internal/features/playlist/views"
 	"github.com/AkifhanIlgaz/tini/internal/platform/csrf"
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
+	"github.com/AkifhanIlgaz/tini/internal/platform/youtube"
 	"github.com/AkifhanIlgaz/tini/internal/shared/htmx"
 	"github.com/AkifhanIlgaz/tini/internal/shared/middleware"
 	"github.com/gofiber/fiber/v3"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const defaultPageSize = 10
 
 var pageSizeOptions = []int{10, 20, 50}
 
-type PlaylistHandler struct{}
+type PlaylistHandler struct {
+	service *PlaylistService
+}
 
-func NewHandler() *PlaylistHandler {
-	return &PlaylistHandler{}
+func NewHandler(service *PlaylistService) *PlaylistHandler {
+	return &PlaylistHandler{service: service}
 }
 
 func (h *PlaylistHandler) RegisterRoutes(app *fiber.App) {
@@ -35,39 +39,57 @@ func (h *PlaylistHandler) RegisterRoutes(app *fiber.App) {
 	app.Post("/playlist/:id/delete", guard, h.Delete)
 }
 
-// List paginates mockItems in memory — playlist.PlaylistRepository doesn't exist
-// yet, so there's nothing real to query until then.
 func (h *PlaylistHandler) List(c fiber.Ctx) error {
 	u, _ := session.GetCurrentUser(c)
 
-	items := mockItems()
-	pageSize := parsePageSize(c.Query("pageSize"))
+	req := ListItemsRequest{
+		VenueID:  u.VenueID,
+		Page:     parsePage(c.Query("page")),
+		PageSize: parsePageSize(c.Query("pageSize")),
+	}
+	if err := req.Validate(); err != nil {
+		return fmt.Errorf("playlist: list: validate: %w", err)
+	}
 
-	totalItems := len(items)
-	totalPages := max(1, (totalItems+pageSize-1)/pageSize)
-	page := min(parsePage(c.Query("page")), totalPages)
+	result, err := h.service.ListItems(c.Context(), req)
+	if err != nil {
+		return fmt.Errorf("playlist: list: %w", err)
+	}
 
-	start := (page - 1) * pageSize
-	end := min(start+pageSize, totalItems)
+	// Page may be past the end (ör. the last item on a page just got
+	// deleted) — clamp and refetch rather than rendering an empty page with
+	// a pager that disagrees with it.
+	if result.Page > result.TotalPages && result.TotalPages > 0 {
+		req.Page = result.TotalPages
+		result, err = h.service.ListItems(c.Context(), req)
+		if err != nil {
+			return fmt.Errorf("playlist: list: %w", err)
+		}
+	}
 
 	pageInfo := views.PageInfo{
-		Page:            page,
-		PageSize:        pageSize,
-		TotalPages:      totalPages,
-		TotalItems:      totalItems,
+		Page:            result.Page,
+		PageSize:        result.PageSize,
+		TotalPages:      max(1, result.TotalPages),
+		TotalItems:      int(result.Total),
 		PageSizeOptions: pageSizeOptions,
 	}
 
-	return htmx.Render(c, views.Playlist(u, c.Path(), csrf.Token(c), toRows(items[start:end]), pageInfo))
+	return htmx.Render(c, views.Playlist(u, c.Path(), csrf.Token(c), toRows(result.Items, result.AddedByNames), pageInfo))
 }
 
-// Add only demonstrates the field-error/redirect round-trip for now —
-// nothing is actually persisted until playlist.PlaylistRepository exists.
 func (h *PlaylistHandler) Add(c fiber.Ctx) error {
-	var req AddLinkRequest
+	u, _ := session.GetCurrentUser(c)
+
+	req := AddLinkRequest{
+		VenueID: u.VenueID,
+		AddedBy: u.ID,
+	}
 	if err := c.Bind().Body(&req); err != nil {
 		return fmt.Errorf("playlist: add: bind: %w", err)
 	}
+	req.VenueID = u.VenueID
+	req.AddedBy = u.ID
 
 	if err := req.Validate(); err != nil {
 		var fieldErrs htmx.FieldErrors
@@ -78,14 +100,83 @@ func (h *PlaylistHandler) Add(c fiber.Ctx) error {
 		return fmt.Errorf("playlist: add: validate: %w", err)
 	}
 
+	if req.IsPlaylist() {
+		return h.importPlaylist(c, req)
+	}
+
+	return h.addItem(c, req)
+}
+
+func (h *PlaylistHandler) addItem(c fiber.Ctx, req AddLinkRequest) error {
+	if _, err := h.service.AddItem(c.Context(), req); err != nil {
+		if errors.Is(err, ErrItemAlreadyExists) {
+			return htmx.Render(c, views.AddLinkForm(req.URL, htmx.FieldErrors{"url": ErrURLAlreadyAdded}))
+		}
+		if isYoutubeUserError(err) {
+			return htmx.Render(c, views.AddLinkForm(req.URL, htmx.FieldErrors{"url": err}))
+		}
+
+		return fmt.Errorf("playlist: add: %w", err)
+	}
+
 	return htmx.Redirect(c, "/playlist")
 }
 
-// Delete only demonstrates the redirect round-trip for now — nothing is
-// actually removed until playlist.PlaylistRepository exists.
+func (h *PlaylistHandler) importPlaylist(c fiber.Ctx, req AddLinkRequest) error {
+	added, err := h.service.ImportPlaylist(c.Context(), req)
+	if err != nil {
+		if isYoutubeUserError(err) {
+			return htmx.Render(c, views.AddLinkForm(req.URL, htmx.FieldErrors{"url": err}))
+		}
+
+		return fmt.Errorf("playlist: add: import: %w", err)
+	}
+
+	if err := htmx.Toast(c, htmx.ToastOptions{
+		Title:       "Playlist içe aktarıldı",
+		Description: fmt.Sprintf("%d şarkı eklendi.", added),
+		Variant:     htmx.ToastSuccess,
+	}); err != nil {
+		return fmt.Errorf("playlist: add: toast: %w", err)
+	}
+
+	return htmx.Redirect(c, "/playlist")
+}
+
+// isYoutubeUserError reports whether err is one of youtube.Client's
+// expected, user-facing failures (bad/missing playlist, no API key, ...) —
+// these surface as the url field's error instead of the generic 500 path.
+func isYoutubeUserError(err error) bool {
+	return errors.Is(err, youtube.ErrInvalidURL) ||
+		errors.Is(err, youtube.ErrRequestFailed) ||
+		errors.Is(err, youtube.ErrAPIKeyMissing) ||
+		errors.Is(err, youtube.ErrPlaylistNotFound) ||
+		errors.Is(err, youtube.ErrPlaylistEmpty) ||
+		errors.Is(err, youtube.ErrUnsupportedPlaylist)
+}
+
 func (h *PlaylistHandler) Delete(c fiber.Ctx) error {
-	if c.Params("id") == "" {
-		return errors.New("playlist: delete: missing id")
+	u, _ := session.GetCurrentUser(c)
+
+	id, err := bson.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return fmt.Errorf("playlist: delete: parse id: %w", err)
+	}
+
+	req := DeleteItemRequest{
+		VenueID: u.VenueID,
+		ID:      id,
+	}
+	if err := req.Validate(); err != nil {
+		return fmt.Errorf("playlist: delete: validate: %w", err)
+	}
+
+	if err := h.service.DeleteItem(c.Context(), req); err != nil {
+		if errors.Is(err, ErrItemNotFound) {
+			return htmx.Redirect(c, "/playlist")
+		}
+
+		return fmt.Errorf("playlist: delete: %w", err)
 	}
 
 	return htmx.Redirect(c, "/playlist")
@@ -109,30 +200,30 @@ func parsePageSize(raw string) int {
 	return pageSize
 }
 
-// mockItem stands in for a playlist item until playlist.PlaylistRepository exists.
-type mockItem struct {
-	id    string
-	title string
-	url   string
+// turkishMonths is time.Month's Turkish name, 1-indexed like time.Month
+// itself — Go's time package has no locale support, so formatCreatedAt
+// builds the string by hand instead of a Format layout.
+var turkishMonths = [...]string{
+	"", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+	"Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
 }
 
-func mockItems() []mockItem {
-	items := make([]mockItem, 0, 23)
-	for i := 1; i <= 23; i++ {
-		items = append(items, mockItem{
-			id:    strconv.Itoa(i),
-			title: fmt.Sprintf("Şarkı %d", i),
-			url:   fmt.Sprintf("https://youtu.be/mock%04d", i),
-		})
-	}
-
-	return items
+func formatCreatedAt(t time.Time) string {
+	return fmt.Sprintf("%d %s %d", t.Day(), turkishMonths[t.Month()], t.Year())
 }
 
-func toRows(items []mockItem) []views.PlaylistRow {
+func toRows(items []PlaylistItem, addedByNames map[bson.ObjectID]string) []views.PlaylistRow {
 	rows := make([]views.PlaylistRow, 0, len(items))
-	for _, it := range items {
-		rows = append(rows, views.PlaylistRow{ID: it.id, Title: it.title, URL: it.url})
+	for _, item := range items {
+		rows = append(rows, views.PlaylistRow{
+			ID:        item.ID.Hex(),
+			Title:     item.Title,
+			Channel:   item.Channel,
+			Thumbnail: item.Thumbnail,
+			URL:       "https://youtu.be/" + item.YoutubeID,
+			AddedBy:   addedByNames[item.AddedBy],
+			CreatedAt: formatCreatedAt(item.CreatedAt),
+		})
 	}
 
 	return rows

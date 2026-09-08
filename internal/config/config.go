@@ -25,6 +25,7 @@ type Config struct {
 	Redis   RedisConfig   `mapstructure:"redis"`
 	Session SessionConfig `mapstructure:"session"`
 	Google  GoogleConfig  `mapstructure:"google"`
+	Youtube YoutubeConfig `mapstructure:"youtube"`
 }
 
 type LogConfig struct {
@@ -61,6 +62,14 @@ type GoogleConfig struct {
 	ClientID     string `mapstructure:"client_id"`
 	ClientSecret string `mapstructure:"client_secret"`
 	CallbackURL  string `mapstructure:"callback_url"`
+}
+
+type YoutubeConfig struct {
+	// APIKey is only needed for playlist import (youtube.Client.FetchPlaylistItems)
+	// — a single-video add (ExtractTrackInfo) uses YouTube's public oEmbed
+	// endpoint instead. Not required at startup: an empty key just makes
+	// import fail with youtube.ErrAPIKeyMissing.
+	APIKey string `mapstructure:"api_key"`
 }
 
 func (c Config) IsProduction() bool {
@@ -101,6 +110,7 @@ func Load() (Config, error) {
 	mustBindEnv(v, "google.client_id", "GOOGLE_CLIENT_ID")
 	mustBindEnv(v, "google.client_secret", "GOOGLE_CLIENT_SECRET")
 	mustBindEnv(v, "google.callback_url", "GOOGLE_CALLBACK_URL")
+	mustBindEnv(v, "youtube.api_key", "YOUTUBE_API_KEY")
 
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError
