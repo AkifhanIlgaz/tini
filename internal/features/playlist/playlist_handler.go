@@ -36,6 +36,7 @@ func (h *PlaylistHandler) RegisterRoutes(app *fiber.App) {
 
 	app.Get("/playlist", guard, h.List)
 	app.Post("/playlist", guard, h.Add)
+	app.Post("/playlist/now-playing/next", guard, h.NextTrack)
 	app.Post("/playlist/:id/delete", guard, h.Delete)
 }
 
@@ -180,6 +181,41 @@ func (h *PlaylistHandler) Delete(c fiber.Ctx) error {
 	}
 
 	return htmx.Redirect(c, "/playlist")
+}
+
+// NextTrack drives the persistent player bar (internal/shared/layout.Dashboard):
+// on the bar's initial load (no currentYoutubeId) and every time
+// static/js/player.js advances past a finished/errored video, it POSTs here
+// for the next item in playlist order (see PlaylistService.NextTrack) and
+// swaps the result into #now-playing-info.
+func (h *PlaylistHandler) NextTrack(c fiber.Ctx) error {
+	u, _ := session.GetCurrentUser(c)
+
+	var req NextTrackRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return fmt.Errorf("playlist: next track: bind: %w", err)
+	}
+	req.VenueID = u.VenueID
+
+	if err := req.Validate(); err != nil {
+		return fmt.Errorf("playlist: next track: validate: %w", err)
+	}
+
+	item, err := h.service.NextTrack(c.Context(), req)
+	if err != nil {
+		if errors.Is(err, ErrItemNotFound) {
+			return htmx.Render(c, views.NowPlaying(nil))
+		}
+
+		return fmt.Errorf("playlist: next track: %w", err)
+	}
+
+	return htmx.Render(c, views.NowPlaying(&views.NowPlayingTrack{
+		YoutubeID: item.YoutubeID,
+		Title:     item.Title,
+		Channel:   item.Channel,
+		Thumbnail: item.Thumbnail,
+	}))
 }
 
 func parsePage(raw string) int {

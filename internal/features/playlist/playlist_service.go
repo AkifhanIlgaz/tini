@@ -147,6 +147,19 @@ func (s *PlaylistService) DeleteItem(ctx context.Context, req DeleteItemRequest)
 	return nil
 }
 
+// NextTrack returns req.VenueID's playlist item to play after
+// req.CurrentYoutubeID (playlist order, created_at ascending), wrapping to
+// the first item past the end — the temporary stand-in for a real queue's
+// Next (see PlaylistRepository.NextAfter). req is assumed already validated.
+func (s *PlaylistService) NextTrack(ctx context.Context, req NextTrackRequest) (PlaylistItem, error) {
+	item, err := s.repo.NextAfter(ctx, req.VenueID, req.CurrentYoutubeID)
+	if err != nil {
+		return PlaylistItem{}, fmt.Errorf("playlist: next track: %w", err)
+	}
+
+	return item, nil
+}
+
 // newPlaylistItemFromTrackInfo maps a YouTube track lookup onto a
 // PlaylistItem for venueID, added by addedBy.
 func newPlaylistItemFromTrackInfo(venueID, addedBy bson.ObjectID, info youtube.TrackInfo) PlaylistItem {

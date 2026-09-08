@@ -45,6 +45,7 @@
 @import "@heroui/styles/components/textfield.css" layer(components);
 @import "@heroui/styles/components/pagination.css" layer(components);
 @import "@heroui/styles/components/checkbox.css" layer(components);
+@import "@heroui/styles/components/progress-bar.css" layer(components);
 
 @import "@heroui/styles/themes/default" layer(theme);
 
@@ -290,7 +291,73 @@
 	border-top: 1px solid var(--border);
 }
 
+/*
+ * internal/shared/layout.PlayerBar: playback/mute state lives on #player-bar
+ * itself ([data-state]/.player-bar--muted, set by static/js/player.js) —
+ * same driven-by-JS-attribute pattern as [data-theme]/[data-sidebar] above,
+ * so the play/pause and muted/unmuted icon pairs toggle without a templ
+ * re-render.
+ */
+.player-icon-play,
+.player-icon-pause,
+.player-icon-unmuted,
+.player-icon-muted {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
 
+/* The button component forces every child svg to size-4 (1rem, see
+   @heroui/styles/components/button.css's .button--sm rule) — too big for
+   our size-6 compact player buttons, so shrink just these icons back down.
+   Unlayered (not @apply/@layer here) so it wins over that layered rule
+   regardless of selector order — see Tailwind's cascade layers. */
+.player-icon-play svg,
+.player-icon-pause svg,
+.player-icon-unmuted svg,
+.player-icon-muted svg {
+	width: 0.875rem;
+	height: 0.875rem;
+}
+
+.player-icon-pause,
+.player-icon-muted {
+	display: none;
+}
+
+[data-state="playing"] .player-icon-play {
+	display: none;
+}
+
+[data-state="playing"] .player-icon-pause {
+	display: inline-flex;
+}
+
+.player-bar--muted .player-icon-unmuted {
+	display: none;
+}
+
+.player-bar--muted .player-icon-muted {
+	display: inline-flex;
+}
+
+/* Autoplay was blocked by the browser — draw attention to the button that
+   unlocks it with a user gesture (see static/js/player.js's
+   armAutoplayBlockedTimer). */
+[data-state="blocked"] #player-bar button:has(.player-icon-play) {
+	color: var(--accent);
+	animation: player-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes player-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
 
 :root,
 .light,

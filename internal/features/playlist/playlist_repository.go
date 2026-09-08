@@ -18,6 +18,7 @@ type PlaylistRepository interface {
 	Insert(ctx context.Context, item PlaylistItem) (PlaylistItem, error)
 	InsertMany(ctx context.Context, items []PlaylistItem) (int, error)
 	Delete(ctx context.Context, venueID, id bson.ObjectID) error
+	NextAfter(ctx context.Context, venueID bson.ObjectID, currentYoutubeID string) (PlaylistItem, error)
 }
 
 type playlistMongoRepository struct {
@@ -140,4 +141,49 @@ func (r *playlistMongoRepository) Delete(ctx context.Context, venueID, id bson.O
 	}
 
 	return nil
+}
+
+// NextAfter returns venueID's playlist item to play after currentYoutubeID,
+// in playlist order (created_at ascending) — the temporary stand-in for a
+// real queue's Next until that feature exists. An empty currentYoutubeID, or
+// one no longer in the playlist (deleted since), starts from the beginning;
+// running past the last item wraps back to the first. ErrItemNotFound is
+// returned only when the playlist has no items at all.
+func (r *playlistMongoRepository) NextAfter(ctx context.Context, venueID bson.ObjectID, currentYoutubeID string) (PlaylistItem, error) {
+	sortByCreatedAtAsc := options.FindOne().SetSort(bson.D{{Key: "created_at", Value: 1}})
+
+	if currentYoutubeID != "" {
+		var current PlaylistItem
+		err := r.collection.FindOne(ctx, bson.M{"venue_id": venueID, "youtube_id": currentYoutubeID}).Decode(&current)
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return PlaylistItem{}, fmt.Errorf("playlist: next after: find current: %w", err)
+		}
+
+		if err == nil {
+			var next PlaylistItem
+			err := r.collection.FindOne(ctx, bson.M{
+				"venue_id":   venueID,
+				"created_at": bson.M{"$gt": current.CreatedAt},
+			}, sortByCreatedAtAsc).Decode(&next)
+			if err == nil {
+				return next, nil
+			}
+			if !errors.Is(err, mongo.ErrNoDocuments) {
+				return PlaylistItem{}, fmt.Errorf("playlist: next after: find next: %w", err)
+			}
+			// Fall through to wrap back to the first item below.
+		}
+	}
+
+	var first PlaylistItem
+	err := r.collection.FindOne(ctx, bson.M{"venue_id": venueID}, sortByCreatedAtAsc).Decode(&first)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return PlaylistItem{}, ErrItemNotFound
+		}
+
+		return PlaylistItem{}, fmt.Errorf("playlist: next after: find first: %w", err)
+	}
+
+	return first, nil
 }

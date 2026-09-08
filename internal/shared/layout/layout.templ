@@ -15,6 +15,12 @@ templ head(title string, csrfToken string) {
 		<!-- No defer/async: must set [data-theme]/[data-sidebar] before first paint to avoid a flash of the wrong state. -->
 		<script src="/static/js/theme-toggle.js"></script>
 		<script src="/static/js/sidebar.js"></script>
+		<!-- defer (unlike theme-toggle.js/sidebar.js above): player.js looks up
+		     #player-bar and its children by id, which don't exist yet while
+		     <head> is still being parsed — it needs the body parsed first, and
+		     has no FOUC concern (nothing to set before paint) forcing it to run
+		     earlier like the FOUC-guard scripts above. -->
+		<script src="/static/js/player.js" defer></script>
 		<link rel="preconnect" href="https://fonts.googleapis.com"/>
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
 		<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"/>

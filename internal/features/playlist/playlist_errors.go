@@ -14,4 +14,8 @@ var (
 var (
 	ErrURLRequired     = errors.New("Link boş olamaz.")
 	ErrURLAlreadyAdded = errors.New("Bu şarkı zaten playlist'te.")
+	// ErrPlaylistEmpty is Handler.NextTrack's display counterpart for
+	// ErrItemNotFound — shown directly in the now-playing panel rather than
+	// as a field error (see views.NowPlaying).
+	ErrPlaylistEmpty = errors.New("Playlist boş — önce bir şarkı ekleyin.")
 )

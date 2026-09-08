@@ -79,6 +79,24 @@ func (r AddLinkRequest) IsPlaylist() bool {
 	return r.PlaylistID != ""
 }
 
+// NextTrackRequest is PlaylistService.NextTrack's input — advances playback
+// to the item after CurrentYoutubeID in playlist order (created_at
+// ascending), wrapping to the first item past the end. An empty
+// CurrentYoutubeID (first load, or an item since deleted) starts from the
+// beginning.
+type NextTrackRequest struct {
+	VenueID          bson.ObjectID `form:"-"`
+	CurrentYoutubeID string        `form:"currentYoutubeId"`
+}
+
+func (r NextTrackRequest) Validate() error {
+	if r.VenueID.IsZero() {
+		return errors.New("playlist: venue id is required")
+	}
+
+	return nil
+}
+
 // DeleteItemRequest is PlaylistHandler.Delete's input — ID comes from the route
 // param, VenueID from the session.
 type DeleteItemRequest struct {

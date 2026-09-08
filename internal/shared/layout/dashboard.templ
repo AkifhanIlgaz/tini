@@ -4,6 +4,7 @@ import (
 	"github.com/AkifhanIlgaz/tini/internal/platform/session"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/breadcrumbs"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/button"
+	"github.com/AkifhanIlgaz/tini/internal/shared/components/progressbar"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/sidebar"
 	"github.com/AkifhanIlgaz/tini/internal/shared/components/themetoggle"
 	"github.com/AkifhanIlgaz/tini/internal/shared/icons"
@@ -73,6 +74,9 @@ templ Dashboard(p DashboardProps) {
 					for _, it := range p.FooterItems {
 						@sidebar.Link(p.Path, it)
 					}
+					<div class="lg:hidden">
+						@themetoggle.Toggle()
+					</div>
 					@button.Button(button.Props{
 						Variant:   button.VariantDanger,
 						Size:      button.SizeSm,
@@ -84,15 +88,22 @@ templ Dashboard(p DashboardProps) {
 					}
 				}
 				<div class="flex min-w-0 flex-1 flex-col lg:gap-4 lg:pt-4 lg:pr-4">
-					<header class="sticky top-0 z-20 flex min-h-14 items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur lg:top-4 lg:rounded-2xl lg:border lg:px-6 lg:shadow-surface">
-						<button type="button" class="button button--ghost button--sm button--icon-only lg:hidden" aria-label="Menüyü aç" onclick="window.__toggleMobileSidebar()">
-							@icons.Menu()
-						</button>
-						<button type="button" class="button button--ghost button--sm button--icon-only max-lg:hidden" aria-label="Menüyü daralt/genişlet" onclick="window.__toggleSidebar()">
-							@icons.PanelLeft()
-						</button>
-						@Breadcrumbs(p.Crumbs)
-						<div class="ms-auto">
+					<header class="sticky top-0 z-20 grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-background/80 px-4 py-3 backdrop-blur sm:gap-4 lg:top-4 lg:rounded-2xl lg:border lg:px-6 lg:shadow-surface">
+						<div class="flex items-center gap-3">
+							<button type="button" class="button button--ghost button--sm button--icon-only lg:hidden" aria-label="Menüyü aç" onclick="window.__toggleMobileSidebar()">
+								@icons.Menu()
+							</button>
+							<button type="button" class="button button--ghost button--sm button--icon-only max-lg:hidden" aria-label="Menüyü daralt/genişlet" onclick="window.__toggleSidebar()">
+								@icons.PanelLeft()
+							</button>
+							<div class="hidden lg:contents">
+								@Breadcrumbs(p.Crumbs)
+							</div>
+						</div>
+						<div class="flex min-w-0 justify-center">
+							@PlayerBar()
+						</div>
+						<div class="hidden items-center justify-end gap-2 lg:flex">
 							@themetoggle.Toggle()
 						</div>
 					</header>
@@ -104,6 +115,74 @@ templ Dashboard(p DashboardProps) {
 			@ToastRegion()
 		</body>
 	</html>
+}
+
+// PlayerBar is the persistent "now playing" pill in the navbar's header
+// (see Dashboard) — styled after jukebox's admin NowPlayingIndicator
+// (~/Desktop/workspace/jukebox/frontend/features/admin/components/NowPlayingIndicator.tsx).
+// The header itself sits outside #dashboard-content (Dashboard's hx-select/
+// hx-target), so boosted navigation between pages never touches it — the
+// YouTube iframe static/js/player.js mounts into #yt-player-mount stays put
+// and keeps playing no matter which page is showing. layout can't import a
+// feature (see CONTRIBUTING.md), so this markup stays feature-agnostic:
+// #now-playing-info's actual track content (thumbnail, title, channel,
+// data-youtube-id) is filled in by playlist.PlaylistHandler.NextTrack over
+// htmx (hx-trigger="load" fires once, the first time this element enters
+// the DOM — i.e. only on a real page load, never on a boosted swap) — see
+// internal/features/playlist/views/now_playing.templ. Play/pause and
+// mute/unmuted icon pairs are toggled via #player-bar[data-state] CSS
+// rules (input.css), set by static/js/player.js — mirrors the
+// [data-sidebar] pattern in static/js/sidebar.js, no templ re-render needed
+// for state changes. #now-playing-info's own hx-select/hx-push-url override
+// what it would otherwise inherit from the boosted wrapper it sits inside
+// (hx-select="#dashboard-content", hx-push-url="true") — same trap
+// AddLinkForm's identical override documents in playlist.templ. Without
+// hx-select here, selecting "#dashboard-content" out of a response that's
+// just this div would find nothing and swap in nothing at all.
+// static/js/player.js's own htmx.ajax() calls for the same endpoint set the
+// equivalent options directly, since they don't run through this element's
+// attributes.
+templ PlayerBar() {
+	<div id="player-bar" class="flex w-full min-w-0 items-center gap-2 rounded-full border border-accent/30 bg-accent/5 py-1 pl-1.5 pr-2 shadow-sm sm:gap-3 sm:pr-3 lg:w-120">
+		<!-- The YouTube IFrame API replaces #yt-player-mount itself with the
+		     real <iframe> (dropping whatever classes the div had), so "hidden"
+		     has to live on this permanent wrapper instead — otherwise YouTube's
+		     own play/pause UI briefly flashes over the thumbnail. -->
+		<div class="hidden">
+			<div id="yt-player-mount"></div>
+		</div>
+		<div
+			id="now-playing-info"
+			class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"
+			hx-post="/playlist/now-playing/next"
+			hx-trigger="load"
+			hx-target="this"
+			hx-select="#now-playing-info"
+			hx-swap="outerHTML"
+			hx-push-url="false"
+		>
+			<span class="truncate text-xs text-muted">Yükleniyor…</span>
+		</div>
+		<div class="hidden min-w-0 flex-1 items-center gap-1.5 md:flex">
+			<span id="player-time-current" class="shrink-0 text-[0.6875rem] text-muted tabular-nums">0:00</span>
+			@progressbar.ProgressBar(progressbar.Props{Value: 0, Size: progressbar.SizeSm, Attrs: templ.Attributes{"id": "player-progress", "aria-label": "İlerleme"}}, "min-w-0 flex-1") {
+				@progressbar.Track() {
+					@progressbar.Fill()
+				}
+			}
+			<span id="player-time-duration" class="shrink-0 text-[0.6875rem] text-muted tabular-nums">0:00</span>
+		</div>
+		<div class="flex shrink-0 items-center gap-1">
+			@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, IsIconOnly: true, Attrs: templ.Attributes{"aria-label": "Sesi kapat/aç", "onclick": "window.__togglePlayerMute()"}}, "size-6") {
+				<span class="player-icon-unmuted">@icons.Volume2()</span>
+				<span class="player-icon-muted">@icons.VolumeX()</span>
+			}
+			@button.Button(button.Props{Variant: button.VariantPrimary, Size: button.SizeSm, IsIconOnly: true, Attrs: templ.Attributes{"aria-label": "Oynat/Duraklat", "onclick": "window.__togglePlayerPlayback()"}}, "size-6") {
+				<span class="player-icon-play">@icons.Play()</span>
+				<span class="player-icon-pause">@icons.Pause()</span>
+			}
+		</div>
+	</div>
 }
 
 // Breadcrumbs carries hx-swap-oob so a boosted sidebar navigation (see
